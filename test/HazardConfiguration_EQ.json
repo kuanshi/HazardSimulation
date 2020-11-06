@@ -1,0 +1,49 @@
+{
+    "Site": {
+        "Type": "From_CSV",
+        "input_file": "SiteFile.csv",
+        "min_ID": 1,
+        "max_ID": 2
+    },
+    "Scenario": {
+        "Type": "Earthquake",
+        "Number": 1,
+        "Generator": "Selection",
+        "EqRupture": {
+            "Type": "ERF",
+            "Model": "Mean UCERF3 FM3.2",
+            "Name": "San Andreas",
+            "min_Mag": 8.0,
+            "max_Mag": 9.0,
+            "max_Dist": 200.0
+        }
+    },
+    "Event": {
+        "NumberPerSite": 2,
+        "GMPE": {
+            "Type": "Chiou & Youngs (2014)",
+            "Parameters": {}
+        },
+        "CorrelationModel": {
+            "SaInterEvent": "Baker & Jayaram (2008)",
+            "SaIntraEvent": "Markhvida et al. (2017)"
+        },
+        "IntensityMeasure": {
+            "Type": "SA",
+            "Periods": [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 7.5, 10.0]
+        },
+        "ScalingFactor": {
+            "Maximum": 10.0,
+            "Minimum": 0.1
+        },
+        "Database": "NGAWest2",
+        "UserName": "simcenter_test@outlook.com",
+        "UserPassword": "123456",
+        "OutputFormat": "SimCenterEvent"
+    },
+    "Directory":{
+        "Work": "PATH/TO/HazardSimulation/",
+        "Input": "PATH/TO/HazardSimulation/test/eq_input/",
+        "Output": "PATH/TO/HazardSimulation/test/records/"
+    }
+}
