@@ -39,6 +39,7 @@
             "Maximum": 10.0,
             "Minimum": 0.1
         },
+        "SaveIM": true,
         "Database": "NGAWest2"
     },
     "Directory":{

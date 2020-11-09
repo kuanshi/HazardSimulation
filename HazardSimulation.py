@@ -115,6 +115,9 @@ if __name__ == '__main__':
         ln_psa_mr = simulate_ground_motion(psa_raw, event_info['NumberPerSite'],
                                            event_info['CorrelationModel'])
         print('HazardSimulation: correlated response spectra computed.')
+        if event_info['SaveIM']:
+            _ = export_im(stations['Stations'], event_info['IntensityMeasure']['Periods'],
+                          ln_psa_mr, output_dir, 'SiteIM.json')
         #print(np.exp(ln_psa_mr[0][0, :, 1]))
         #print(np.exp(ln_psa_mr[0][1, :, 1]))
     elif scenario_info['Type'] == 'Wind':

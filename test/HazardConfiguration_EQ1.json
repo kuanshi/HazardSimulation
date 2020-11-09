@@ -36,6 +36,7 @@
             "Maximum": 20.0,
             "Minimum": 0.1
         },
+        "SaveIM": true,
         "Database": "NGAWest2",
         "UserName": "simcenter_test@outlook.com",
         "UserPassword": "123456",

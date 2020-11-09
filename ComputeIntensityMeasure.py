@@ -126,6 +126,36 @@ def compute_intra_event_residual(sa_intra_cm, periods, station_data, num_simu):
 	return residuals
 
 
+def export_im(stations, T, im_data, output_dir, filename):
+
+
+	#try:
+	    # Station number
+		num_stations = len(stations)
+		# Scenario number
+		num_scenarios = len(im_data)
+		res = []
+		for i in range(num_stations):
+			tmp = {'Location': {
+			           'Latitude': stations[i]['Latitude'],
+				       'Longitude': stations[i]['Longitude']
+					   },
+				   'Vs30': int(stations[i]['Vs30'])
+				  }
+			tmp.update({'Periods': T})
+			tmp.update({'lnSa': np.ndarray.tolist(im_data[j][i, :, :]) for j in range(num_scenarios)})
+			res.append(tmp)
+		res = {'Station_lnSa': res}
+		# save
+		with open(os.path.join(output_dir, filename), "w") as f:
+			json.dump(res, f, indent=2)
+		# return
+		return 0
+	#except:
+		# return
+		#return 1
+
+
 def simulate_ground_motion(psa_raw, num_simu, correlation_info):
 
     # Sa inter-event model
