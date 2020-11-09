@@ -44,36 +44,20 @@ import json
 import random
 import numpy as np
 import pandas as pd
+from FetchOpenSHA import *
+
 
 def create_earthquake_scenarios(scenario_info, stations):
 
     # Number of scenarios
     source_num = scenario_info.get('Number', 1)
     # Directly defining earthquake ruptures
-    if scenario_info['Generator'] == 'Prescription':
-        scenario_data = dict()
-        for i in range(source_num):
-            try:
-                source_type = scenario_info['EqRupture'][i]['Type']
-                source_model = scenario_info['EqRupture'][i]['Model']
-                source_ID = scenario_info['EqRupture'][i]['Source_ID']
-                source_rupture = scenario_info['EqRupture'][i]['Rupture_ID']
-                scenario_data.update({i: {
-                    'Type': source_type,
-                    'RuptureForecast': source_model,
-                    'SourceIndex': source_ID,
-                    'RuptureIndex': source_rupture
-                }})
-            except:
-                print('Please check the defined scenario number.')
+    if scenario_info['Generator'] == 'Simulation':
+        # TODO:
+        print('Physics-based earthquake simulation is under development.')
+        return 1
     # Searching earthquake ruptures that fulfill the request
     elif scenario_info['Generator'] == 'Selection':
-        source_type = scenario_info['EqRupture']['Type']
-        source_model = scenario_info['EqRupture']['Model']
-        source_name = scenario_info['EqRupture'].get('Name',False)
-        min_M = scenario_info['EqRupture'].get('min_Mag', 6.0)
-        max_M = scenario_info['EqRupture'].get('max_Mag', 9.0)
-        max_R = scenario_info['EqRupture'].get('max_Dist', 1000.0)
         # Collecting all possible earthquake scenarios
         lat = []
         lon = []
@@ -83,46 +67,59 @@ def create_earthquake_scenarios(scenario_info, stations):
         # Reference location
         lat = np.mean(lat)
         lon = np.mean(lon)
-        tmp = dict()
-        tmp['Site'] = {'Type': 'SingleLocation'}
-        tmp['Site']['Location'] = {'Latitude': lat,
-                                   'Longitude': lon}
-        tmp['EqRupture'] = {'Type': source_type,
-                            'RuptureForecast': source_model,
-                            'ExportGeoJson': True,
-                            'MaxDistance': max_R,
-                            'MaxSources': 200}
-        with open('tmp_input.json', 'w') as f:
-            json.dump(tmp, f, indent = 2)
-        # Calling EQHazard to search ruptures
-        _ = subprocess.call(['java', '-jar', './lib/EQHazard.jar',
-                             'tmp_input.json', 'tmp_output.json'])
-        # Processing the selection results
-        with open('tmp_output.json', 'r') as f:
-            tmp = json.load(f)
-        feat = tmp['features']
-        tag = []
-        for i, cur_f in enumerate(feat):
-            if source_name and (source_name not in cur_f['properties']['Name']):
-                continue
-            if min_M > cur_f['properties']['Magnitude']:
-                continue
-            tag.append(i)
-        # Abstracting desired ruptures
-        s_tag = random.sample(tag, min(source_num, len(tag)))
-        tmp['features'] = list(feat[i] for i in s_tag)
-        scenario_data = dict()
-        for i, rup in enumerate(tmp['features']):
-            scenario_data.update({i: {
-                'Type': source_type,
-                'RuptureForecast': source_model,
-                'SourceIndex': rup['properties']['Source'],
-                'RuptureIndex': rup['properties']['Rupture']
-            }})
-        del tmp
-        # Cleaning tmp outputs
-        os.remove('tmp_input.json')
-        os.remove('tmp_output.json')
+        ref_station = [lat, lon]
+        # Getting earthquake rupture forecast data
+        source_type = scenario_info['EqRupture']['Type']
+        if source_type == 'ERF':
+            source_model = scenario_info['EqRupture']['Model']
+            source_name = scenario_info['EqRupture'].get('Name', None)
+            min_M = scenario_info['EqRupture'].get('min_Mag', 5.0)
+            max_M = scenario_info['EqRupture'].get('max_Mag', 9.0)
+            max_R = scenario_info['EqRupture'].get('max_Dist', 1000.0)
+            eq_source = getERF(source_model, True)
+            erf_data = export_to_json(eq_source, ref_station, outfile = None, \
+                                      EqName = source_name, minMag = min_M, \
+                                      maxMag = max_M, maxDistance = max_R, \
+                                      maxSources = 500)
+            # Parsing data
+            feat = erf_data['features']
+            tag = []
+            for i, cur_f in enumerate(feat):
+                if source_name and (source_name not in cur_f['properties']['Name']):
+                    continue
+                if min_M > cur_f['properties']['Magnitude']:
+                    continue
+                tag.append(i)
+            # Abstracting desired ruptures
+            s_tag = random.sample(tag, min(source_num, len(tag)))
+            erf_data['features'] = list(feat[i] for i in s_tag)
+            scenario_data = dict()
+            for i, rup in enumerate(erf_data['features']):
+                scenario_data.update({i: {
+                    'Type': source_type,
+                    'RuptureForecast': source_model,
+                    'SourceIndex': rup['properties']['Source'],
+                    'RuptureIndex': rup['properties']['Rupture']
+                }})
+            # Cleaning tmp outputs
+            del erf_data
+        elif source_type == 'PointSource':
+            scenario_data = dict()
+            try:
+                magnitude = scenario_info['EqRupture']['Magnitude']
+                location = scenario_info['EqRupture']['Location']
+                average_rake = scenario_info['EqRupture']['AverageRake']
+                average_dip = scenario_info['EqRupture']['AverageDip']
+                scenario_data.update({0: {
+                    'Type': source_type,
+                    'Magnitude': magnitude,
+                    'Location': location,
+                    'AverageRake': average_rake,
+                    'AverageDip': average_dip
+                }})
+            except:
+                print('Please check point-source inputs.')
+    # return
     return scenario_data
 
 

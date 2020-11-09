@@ -53,6 +53,7 @@ import numpy as np
 import pandas as pd
 import zipfile
 
+
 def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
                          output_dir, output_file, stations):
 
@@ -65,7 +66,7 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
         T_db = [float(a.replace('T','').replace('S','')) for a in tmp]
         psa_db = gmdb.iloc[:, 37:147]
         # Scaling factors
-        sf_range = np.linspace(sf_min, sf_max, 50)
+        sf_range = np.linspace(sf_min, sf_max, 100)
         # Selected ground motion ID
         gm_id = []
         sf_data = []
@@ -98,8 +99,8 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
                     tmp_min_err[j, i] = min_err
                     tmp_id[j, i] = int(gmdb['RecId'][tmp_tag])
                     tmp_sf[j, i] = sf
-                    tmp_filename.append('RSN'+str(int(tmp_id[j,i]))+'_'+gmdb['FileNameHorizontal1'][tmp_tag].replace("\\","_"))
-                    tmp_filename.append('RSN'+str(int(tmp_id[j,i]))+'_'+gmdb['FileNameHorizontal2'][tmp_tag].replace("\\","_"))
+                    tmp_filename.append('RSN'+str(int(tmp_id[j,i]))+'_'+gmdb['FileNameHorizontal1'][tmp_tag].replace("\\","_").replace("/","_"))
+                    tmp_filename.append('RSN'+str(int(tmp_id[j,i]))+'_'+gmdb['FileNameHorizontal2'][tmp_tag].replace("\\","_").replace("/","_"))
             # Collecting results in one scenario
             gm_id.append(tmp_id)
             sf_data.append(tmp_sf)
@@ -213,6 +214,7 @@ def readNGAWest2record(ngaW2FilePath):
                 data_flag = True
     # return
     return series, dt
+
 
 def parse_record(gm_file, raw_dir, output_dir, input_format, output_format):
     gm_file = np.reshape(gm_file, (-1, 2))

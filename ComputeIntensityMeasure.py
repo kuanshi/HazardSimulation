@@ -45,24 +45,17 @@ import json
 import numpy as np
 import pandas as pd
 from gmpe import CorrelationModel
+from FetchOpenSHA import *
+
 
 def compute_spectra(scenarios, stations, gmpe_info, im_info):
 
 	# Calling EQHazard to compute median PSA
 	psa_raw = []
 	# Loop over scenarios
-	tmp = dict()
-	tmp['Site'] = {'Type': 'SiteList'}
-	tmp['GMPE'] = gmpe_info
-	tmp['IntensityMeasure'] = im_info
-	tmp['IntensityMeasure'].update({
-	    "EnableJsonOutput": True,
-        "EnableCsvOutput": False,
-        "EnableGeoJsonOutput": False
-	})
 	for i, s in enumerate(scenarios):
 		# Rupture
-		tmp['EqRupture'] = scenarios[i]
+		source_info = scenarios[i]
 		# Stations
 		station_list = [{
 		    'Location': {
@@ -71,20 +64,13 @@ def compute_spectra(scenarios, stations, gmpe_info, im_info):
 			},
 			'Vs30': int(stations[j]['Vs30'])
 		} for j in range(len(stations))]
-		tmp['Site']['SiteList'] = station_list
-		# Writing inputs
-		with open('tmp_gmpe_input.json', 'w') as f:
-			json.dump(tmp, f, indent = 4)
-		_ = subprocess.call(['java', '-jar', './lib/EQHazard.jar',
-                             'tmp_gmpe_input.json', 'tmp_gmpe_output.json'])
-		# Reading outputs from EQHazard
-		with open('tmp_gmpe_output.json', 'r') as f:
-			res = json.load(f)
+		station_info = {'Type': 'SiteList',
+		                'SiteList': station_list}
+		# Computing IM
+		res = get_IM(gmpe_info, source_info, station_info, im_info)
+		# Collecting outputs
 		psa_raw.append(res)
 
-	# Cleaning up space
-	os.remove('tmp_gmpe_input.json')
-	os.remove('tmp_gmpe_output.json')
 	# return
 	return psa_raw
 

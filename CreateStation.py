@@ -42,6 +42,7 @@ import json
 import numpy as np
 import pandas as pd
 
+
 def get_label(options, labels, label_name):
 
 	for option in options:
@@ -50,6 +51,7 @@ def get_label(options, labels, label_name):
 			return option, labels
 
 	print(f'WARNING: Could not identify the label for the {label_name}')
+
 
 class Station:
     """
@@ -73,6 +75,7 @@ class Station:
     def get_z2p5():
         # Returning the z2.5 of the station
         return self.z2p5
+
 
 def create_stations(input_file, output_file, min_id, max_id):
 	"""
