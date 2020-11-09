@@ -43,8 +43,8 @@
         "OutputFormat": "SimCenterEvent"
     },
     "Directory":{
-        "Work": "D:/test/HazardSimulation/",
-        "Input": "D:/test/HazardSimulation/test/eq_input/",
-        "Output": "D:/test/HazardSimulation/test/records/"
+        "Work": "PATH/TO/HazardSimulation/",
+        "Input": "PATH/TO/HazardSimulation/test/eq_input/",
+        "Output": "PATH/TO/HazardSimulation/test/records/"
     }
 }
