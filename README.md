@@ -7,6 +7,7 @@ User input:
 1. A configuration json file (e.g., [HazardConfiguration_EQ1.json](https://github.com/kuanshi/HazardSimulation/blob/main/test/HazardConfiguration_EQ1.json))
 2. A csv file for site locations and Vs30 values (e.g., [SiteFile.csv](https://github.com/kuanshi/HazardSimulation/blob/main/test/eq_input/SiteFile.csv)
 The configuration json file contains 4 sections:
+
 1. Site list - providing the csv filename and specifying the site ID range
 ```json
 "Site": {
