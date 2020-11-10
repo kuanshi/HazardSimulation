@@ -106,9 +106,11 @@ if __name__ == '__main__':
     if scenario_info['Type'] == 'Earthquake':
         # Computing uncorrelated Sa
         event_info = hazard_info['Event']
-        psa_raw = compute_spectra(scenarios, stations['Stations'],
-                                  event_info['GMPE'],
-                                  event_info['IntensityMeasure'])
+        psa_raw, stn_new = compute_spectra(scenarios, stations['Stations'],
+                                           event_info['GMPE'],
+                                           event_info['IntensityMeasure'])
+        # Updating station information
+        stations['Stations'] = stn_new
         print('HazardSimulation: uncorrelated response spectra computed.')
         #print(psa_raw)
         # Computing log mean Sa

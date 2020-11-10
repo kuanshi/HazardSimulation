@@ -361,6 +361,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
     try:
         availableSiteData = siteDataProviders.getAllAvailableData(sites)
     except:
+        print('Error in getAllAvailableData')
         return 1
     siteTrans = SiteTranslator()
     # Looping over sites
@@ -370,6 +371,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
         # Current site
         site = sites.get(i)
         # Location
+        cur_site = siteSpec[i]
         locResults = {'Latitude': cur_site['Location']['Latitude'],
                       'Longitude': cur_site['Location']['Longitude']}
         cur_loc = Location(cur_site['Location']['Latitude'], cur_site['Location']['Longitude'])
@@ -396,8 +398,16 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
             elif siteDataFound:
                 provider = "Unknown"
                 provider = get_DataSource(newParam.getName(), siteDataValues)
+                if 'String' in str(type(newParam.getValue())):
+                    tmp_value = str(newParam.getValue())
+                elif 'Double' in str(type(newParam.getValue())):
+                    tmp_value = float(newParam.getValue())
+                    if str(newParam.getName())=='Vs30':
+                            cur_site.update({'Vs30': tmp_value})
+                else:
+                    tmp_value = str(newParam.getValue())
                 siteDataResults.append({'Type': str(newParam.getName()),
-                                        'Value': float(newParam.getValue()),
+                                        'Value': tmp_value,
                                         'Source': str(provider)})
             else:
                 newParam.setValue(siteParam.getDefaultValue())
@@ -405,6 +415,9 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
                                         'Value': float(siteParam.getDefaultValue()),
                                         'Source': 'Default'})
             site.addParameter(newParam)
+            # End for j
+        # Updating site specifications
+        siteSpec[i] = cur_site
         gmResults.update({'Location': locResults,
                           'SiteData': siteDataResults})
         imr.setSite(site)
@@ -479,8 +492,11 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
                 pgvResult['IntraEvStdDev'].append(float(intraEvStdDev))
             gmResults.update({'lnPGV': pgvResult})
         gm_collector.append(gmResults)
+    # Updating station information
+    if station_info['Type'] == 'SiteList':
+        station_info.update({'SiteList': siteSpec})
     # Final results
     res = {'Periods': cur_T,
            'GroundMotions': gm_collector}
     # return
-    return res
+    return res, station_info

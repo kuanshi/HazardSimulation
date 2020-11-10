@@ -61,18 +61,25 @@ def compute_spectra(scenarios, stations, gmpe_info, im_info):
 		    'Location': {
 			    'Latitude': stations[j]['Latitude'],
 				'Longitude': stations[j]['Longitude']
-			},
-			'Vs30': int(stations[j]['Vs30'])
+			}
 		} for j in range(len(stations))]
+		for j in range(len(stations)):
+			if stations[j].get('Vs30'):
+				station_list[j].update({'Vs30': int(stations[j]['Vs30'])})
 		station_info = {'Type': 'SiteList',
 		                'SiteList': station_list}
 		# Computing IM
-		res = get_IM(gmpe_info, source_info, station_info, im_info)
+		res, station_info = get_IM(gmpe_info, source_info, station_info, im_info)
 		# Collecting outputs
 		psa_raw.append(res)
 
+	# Collecting station_info updates to staitons
+	for j in range(len(stations)):
+		stations[j]['Latitude'] = station_info['SiteList'][j]['Location']['Latitude']
+		stations[j]['Longitude'] = station_info['SiteList'][j]['Location']['Longitude']
+		stations[j]['Vs30'] = station_info['SiteList'][j]['Vs30']
 	# return
-	return psa_raw
+	return psa_raw, stations
 
 
 def compute_inter_event_residual(sa_inter_cm, periods, num_simu):
@@ -127,7 +134,6 @@ def compute_intra_event_residual(sa_intra_cm, periods, station_data, num_simu):
 
 
 def export_im(stations, T, im_data, output_dir, filename):
-
 
 	#try:
 	    # Station number
@@ -184,6 +190,7 @@ def simulate_ground_motion(psa_raw, num_simu, correlation_info):
 		ln_psa_mr.append(ln_psa)
     # return
 	return ln_psa_mr
+
 
 def simulate_storm(app_dir, input_dir, output_dir):
 

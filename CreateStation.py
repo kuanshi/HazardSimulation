@@ -128,13 +128,23 @@ def create_stations(input_file, output_file, min_id, max_id):
 			stn.get(vs30_label, 760.0), stn.get(z2p5_label, 9.0)
 		))
 		# Collecting station data
-		stn_file['Stations'].append({
+		tmp = {
 		    'ID': stn_id,
 			'Longitude': stn[lon_label],
-			'Latitude': stn[lat_label],
-			'Vs30': stn.get(vs30_label, 760.0),
-			'z2.5': stn.get(z2p5_label, 9.0)
-		})
+			'Latitude': stn[lat_label]
+		}
+		if stn.get(vs30_label):
+			tmp.update({'Vs30': stn.get(vs30_label)})
+		if stn.get(z2p5_label):
+			tmp.update({'z2.5': stn.get(z2p5_label)})
+		stn_file['Stations'].append(tmp)
+		#stn_file['Stations'].append({
+		#    'ID': stn_id,
+		#	'Longitude': stn[lon_label],
+		#	'Latitude': stn[lat_label],
+		#	'Vs30': stn.get(vs30_label, 760.0),
+		#	'z2.5': stn.get(z2p5_label, 9.0)
+		#})
 	# Saving data to the output file
 	if output_file:
 		with open(output_file, 'w') as f:
