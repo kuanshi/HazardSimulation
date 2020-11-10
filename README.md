@@ -8,7 +8,7 @@ User input:
 2. A csv file for site locations and Vs30 values (e.g., [SiteFile.csv](https://github.com/kuanshi/HazardSimulation/blob/main/test/eq_input/SiteFile.csv)
 The configuration json file contains 4 sections:
 
-1. Site list - providing the csv filename and specifying the site ID range
+(1) Site list - providing the csv filename and specifying the site ID range
 ```json
 "Site": {
     "Type": "From_CSV",
@@ -18,7 +18,7 @@ The configuration json file contains 4 sections:
 }
 ```
 
-2. Scenario information - specifying scenario type, number of scenarios, generator type, and earthquake rupture. Currently, two types of EqRupture are supported: "ERF" (earthquake rupture forecast) and "PointSource"
+(2) Scenario information - specifying scenario type, number of scenarios, generator type, and earthquake rupture. Currently, two types of EqRupture are supported: "ERF" (earthquake rupture forecast) and "PointSource"
 "ERF" provides users to select historical earthquakes as the scenarios to run. Historical earthquake data are available from 4 supported "Model"s: "WGCEP (2007) UCERF2 - Single Branch", "Mean UCERF3", "Mean UCERF3 FM3.1", and "Mean UCERF3 FM3.2". Users can specify keywords in "Name" to search earthquakes. "min_Mag", "max_Mag", and "max_Dist" are optional to filter earthquakes.
 ```json
 "Scenario": {
@@ -55,7 +55,7 @@ The configuration json file contains 4 sections:
 }
 ```
 
-3. Event configuration - configuring how many ground motion records per site in each scenario ("NumberPerSite"), which ground motion prediction equation to be used ("GMPE"), which correlation models to be used ("CorrelationModel"), which intensity measures to be computed ("IntensityMeasure"), how much records can be scaled to be fit the target intensity measures ("ScalingFactor"), whether to save simulated IM ("SaveIM"), and whether to download records from "Database".
+(3) Event configuration - configuring how many ground motion records per site in each scenario ("NumberPerSite"), which ground motion prediction equation to be used ("GMPE"), which correlation models to be used ("CorrelationModel"), which intensity measures to be computed ("IntensityMeasure"), how much records can be scaled to be fit the target intensity measures ("ScalingFactor"), whether to save simulated IM ("SaveIM"), and whether to download records from "Database".
 ```json
 "Event": {
     "NumberPerSite": 10,
@@ -84,7 +84,7 @@ The configuration json file contains 4 sections:
 ```
 Currently supported GMPEs: "Abrahamson, Silva & Kamai (2014)", "Boore, Stewart, Seyhan & Atkinson (2014)", "Campbell & Bozorgnia (2014)", and "Chiou & Youngs (2014)". Currently supported correlation models: "Baker & Jayaram (2008)" (for inter-event), "Jayaram & Baker (2009)", "Loth & Baker (2013)", and "Markhvida et al. (2017)" (for intra-event).
 
-4. Directory - defining the working, input, and output directories.
+(4) Directory - defining the working, input, and output directories.
 ```json
 "Directory":{
     "Work": "PATH/TO/HazardSimulation/",
