@@ -96,3 +96,7 @@ Currently supported GMPEs: "Abrahamson, Silva & Kamai (2014)", "Boore, Stewart, 
 Output files:
 1. A "SiteIM.json" file (if "SaveIM" is true) for simulated response spectra
 2. A "records" folder (if "UserName", "UserPassword", and "Output" directory are provided) of selected ground motion records for the user-defined earthquake scenario(s).
+
+License:
+1. OpenSHA-1.5.2 is subjected to Apache-2.0 License
+2. chromedriver is subjected to BSD-3-Clause License
