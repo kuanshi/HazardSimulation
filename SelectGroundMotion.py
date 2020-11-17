@@ -59,7 +59,8 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
 
     # Loading gmdb
     if gmdb_file == 'NGAWest2':
-        gmdb = pd.read_csv('./database/gmdb/NGAWest2.csv', header = 0, index_col = None)
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        gmdb = pd.read_csv(cwd+'/database/gmdb/NGAWest2.csv', header = 0, index_col = None)
         # Parsing spectral data
         num_gm = len(gmdb['RecId'])
         tmp = gmdb.keys()[37:147]
@@ -149,6 +150,7 @@ def download_ground_motion(gm_id, user_name, user_password, output_dir):
         chromedriver = os.path.dirname(__file__) + '/bin/chromedriver/chromedriver_linux'
     elif sys.platform.startswith('darwin'):
         chromedriver = os.path.dirname(__file__) + '/bin/chromedriver/chromedriver_mac'
+        os.chmod(chromedriver, 755)
     else:
         print('Currently supoorting win32, linux, and mac.')
     chromeOptions = webdriver.ChromeOptions()

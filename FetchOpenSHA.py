@@ -283,7 +283,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
         imr = CreateIMRInstance(gmpe_name)
     except:
         print('Please check GMPE name.')
-        return 1
+        return 1, station_info
     # Getting supported intensity measure types
     ims = imr.getSupportedIntensityMeasures()
     saParam = ims.getParameter(SA_Param.NAME)
@@ -362,7 +362,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
         availableSiteData = siteDataProviders.getAllAvailableData(sites)
     except:
         print('Error in getAllAvailableData')
-        return 1
+        return 1, station_info
     siteTrans = SiteTranslator()
     # Looping over sites
     gm_collector = []
