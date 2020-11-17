@@ -99,4 +99,4 @@ Output files:
 
 License:
 1. OpenSHA-1.5.2 is subjected to Apache-2.0 License
-2. chromedriver is subjected to BSD-3-Clause License
+2. chromedriver is subjected to Apache-2.0 License
