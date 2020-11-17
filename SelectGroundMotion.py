@@ -161,12 +161,17 @@ def download_ground_motion(gm_id, user_name, user_password, output_dir):
     # Accessing NGA West-2 website
     gm_driver = webdriver.Chrome(executable_path=chromedriver, chrome_options=chromeOptions)
     gm_driver.get("https://ngawest2.berkeley.edu/users/sign_in?unauthenticated=true")
-    gm_driver.find_element_by_id("user_email").send_keys(user_name)
-    gm_driver.find_element_by_id("user_password").send_keys(user_password)
-    gm_driver.find_element_by_id("user_submit").click()
-    gm_driver.find_element_by_xpath('//a[@href="/spectras/new?sourceDb_flag=1"]').click()
-    gm_driver.find_element_by_xpath('//button[@onclick="OnSubmit();"]').click()
-    time.sleep(1)
+    try:
+        gm_driver.find_element_by_id("user_email").send_keys(user_name)
+        gm_driver.find_element_by_id("user_password").send_keys(user_password)
+        gm_driver.find_element_by_id("user_submit").click()
+        gm_driver.find_element_by_xpath('//a[@href="/spectras/new?sourceDb_flag=1"]').click()
+        gm_driver.find_element_by_xpath('//button[@onclick="OnSubmit();"]').click()
+        time.sleep(1)
+    except:
+        gm_driver.close()
+        print('Please provide valid account name and password.')
+        return 0
 
     # Grouping every 100 records (NGA West website allows 100 records/time)
     for r in range(num_gm//100 + 1):

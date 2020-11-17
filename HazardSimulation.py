@@ -155,12 +155,15 @@ if __name__ == '__main__':
         if (user_name is not None) and (user_password is not None):
             raw_dir = download_ground_motion(gm_id, user_name,
                                              user_password, output_dir)
-            print('HazardSimulation: ground motion records downloaded.')
-            # Parsing records
-            print('HazardSimulation: parsing records.')
-            record_dir = parse_record(gm_file, raw_dir, output_dir,
-                                   event_info['Database'],
-                                   event_info['OutputFormat'])
-            print('HazardSimulation: records parsed.')
+            if raw_dir:
+                print('HazardSimulation: ground motion records downloaded.')
+                # Parsing records
+                print('HazardSimulation: parsing records.')
+                record_dir = parse_record(gm_file, raw_dir, output_dir,
+                                          event_info['Database'],
+                                          event_info['OutputFormat'])
+                print('HazardSimulation: records parsed.')
+            else:
+                print('HazardSimulation: No records to be parsed.')
         else:
             print('HazardSimulation: please provide user name and password.')

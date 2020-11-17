@@ -355,7 +355,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
     # Site data
     sites = ArrayList()
     for cur_site in siteSpec:
-        cur_loc = Location(cur_site['Location']['Latitude'], cur_site['Location']['Longitude'])
+        cur_loc = Location(float(cur_site['Location']['Latitude']), float(cur_site['Location']['Longitude']))
         sites.add(Site(cur_loc))
     siteDataProviders = OrderedSiteDataProviderList.createSiteDataProviderDefaults()
     try:
@@ -374,7 +374,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
         cur_site = siteSpec[i]
         locResults = {'Latitude': cur_site['Location']['Latitude'],
                       'Longitude': cur_site['Location']['Longitude']}
-        cur_loc = Location(cur_site['Location']['Latitude'], cur_site['Location']['Longitude'])
+        cur_loc = Location(float(cur_site['Location']['Latitude']), float(cur_site['Location']['Longitude']))
         siteDataValues = ArrayList()
         for j in range(len(availableSiteData)):
             siteDataValues.add(availableSiteData.get(j).getValue(i))
@@ -438,7 +438,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
             imr.setIntensityMeasure("SA")
             imtParam = imr.getIntensityMeasure()
             for Tj in cur_T:
-                imtParam.getIndependentParameter(PeriodParam.NAME).setValue(Tj)
+                imtParam.getIndependentParameter(PeriodParam.NAME).setValue(float(Tj))
                 mean = imr.getMean()
                 saResult['Mean'].append(float(mean))
                 if stdDevParam is not None:
