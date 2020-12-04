@@ -52,6 +52,7 @@ import random
 import numpy as np
 import pandas as pd
 import zipfile
+import csv
 
 
 def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
@@ -144,6 +145,7 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
 def output_all_ground_motion_info(gm_file, output_dir, filename):
 
     # Writing all record names to a csv file
+    print(gm_file)
     try:
         with open(os.path.join(output_dir, filename), 'w') as f:
             w = csv.writer(f)
