@@ -140,6 +140,18 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
     return gm_id, filename
 
 
+def output_all_ground_motion_info(gm_file, output_dir, filename):
+
+    # Writing all record names to a csv file
+    try:
+        with open(os.path.join(output_dir, filename), 'w') as f:
+            w = csv.writer(f)
+            w.writerow(gm_file)
+        return 1
+    except:
+        return 0
+
+
 def download_ground_motion(gm_id, user_name, user_password, output_dir):
 
     # Setting chrome options

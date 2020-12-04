@@ -146,6 +146,11 @@ if __name__ == '__main__':
         #print(gm_id)
         gm_id = [int(i) for i in np.unique(gm_id)]
         gm_file = [i for i in np.unique(gm_file)]
+        runtag = output_all_ground_motion_info(gm_file, output_dir, 'RecordsList.csv')
+        if runtag:
+            print('HazardSimulation: the ground motion list saved.')
+        else:
+            print('HazardSimulation: warning - issues with saving the ground motion list.')
         print(gm_id)
         print(gm_file)
         # Downloading records
