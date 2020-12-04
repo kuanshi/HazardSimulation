@@ -73,7 +73,10 @@ from org.opensha.sha.imr.param.OtherParams import *
 from org.opensha.sha.imr.param.SiteParams import Vs30_Param
 from org.opensha.sha.calc import *
 from org.opensha.sha.util import *
-from scratch.UCERF3.erf.mean import MeanUCERF3
+try:
+    from scratch.UCERF3.erf.mean import MeanUCERF3
+except ModuleNotFoundError:
+    MeanUCERF3 = jpype.JClass("scratch.UCERF3.erf.mean.MeanUCERF3")
 
 from org.opensha.sha.gcim.imr.attenRelImpl import *
 from org.opensha.sha.gcim.imr.param.IntensityMeasureParams import *
