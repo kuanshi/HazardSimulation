@@ -142,7 +142,7 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
     return gm_id, filename
 
 
-def output_all_ground_motion_info(gm_file, output_dir, filename):
+def output_all_ground_motion_info(gm_id, gm_file, output_dir, filename):
 
     # Writing all record names to a csv file
     print(gm_file)
@@ -150,6 +150,9 @@ def output_all_ground_motion_info(gm_file, output_dir, filename):
         with open(os.path.join(output_dir, filename), 'w') as f:
             w = csv.writer(f)
             w.writerow(gm_file)
+        with open(os.path.join(output_dir, 'RSN.csv'), 'w') as f:
+            w = csv.writer(f)
+            w.writerow(gm_id)
         return 1
     except:
         return 0
