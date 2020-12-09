@@ -123,15 +123,17 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
     })
     output_dir = os.path.join(os.path.dirname(Path(output_dir)),
                               os.path.basename(Path(output_dir)))
-    #df.to_csv(os.path.join(output_dir, output_file), index = False)
+    df.to_csv(os.path.join(output_dir, output_file), index = False)
     for cur_scen in range(len(gm_id)):
-        cur_scen_folder = 'scenario'+str(cur_scen+1)
-        try:
-            os.mkdir(os.path.join(output_dir, cur_scen_folder))
-        except:
-            print('SelectGroundMotion: scenario folder already exists.')
-        # EventGrid.csv
-        df.to_csv(os.path.join(output_dir, cur_scen_folder, output_file), index = False)
+        if len(gm_id) > 1:
+            cur_scen_folder = 'scenario'+str(cur_scen+1)
+            try:
+                os.mkdir(os.path.join(output_dir, cur_scen_folder))
+            except:
+                print('SelectGroundMotion: scenario folder already exists.')
+            cur_output_dir = os.path.join(output_dir, cur_scen_folder)
+        else:
+            cur_output_dir = output_dir
         for i, site_id in enumerate(station_name):
             gm_file = ['RSN'+str(int(j)) for j in gm_id[cur_scen][i]]
             factor = [j for j in sf_data[cur_scen][i]]
@@ -139,7 +141,7 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
                 'GM_file': gm_file,
                 'factor': factor
             })
-            df.to_csv(os.path.join(output_dir, cur_scen_folder, site_id), index = False)
+            df.to_csv(os.path.join(cur_output_dir, site_id), index = False)
     # return
     return gm_id, filename
 
