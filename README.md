@@ -100,3 +100,8 @@ Output files:
 License:
 1. OpenSHA-1.5.2 is subjected to Apache-2.0 License
 2. chromedriver is subjected to Apache-2.0 License
+
+Extra Python packages:
+[JPype1](https://pypi.org/project/JPype1/)
+[selenium](https://pypi.org/project/selenium/)
+
