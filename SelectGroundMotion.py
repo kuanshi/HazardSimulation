@@ -123,7 +123,7 @@ def select_ground_motion(target_period, target_ln_sa, gmdb_file, sf_max, sf_min,
     })
     output_dir = os.path.join(os.path.dirname(Path(output_dir)),
                               os.path.basename(Path(output_dir)))
-    df.to_csv(os.path.join(output_dir, output_file), index = False)
+    df.to_csv(os.path.join(output_dir, output_file), index = False, , sep=' ')
     for cur_scen in range(len(gm_id)):
         if len(gm_id) > 1:
             cur_scen_folder = 'scenario'+str(cur_scen+1)
