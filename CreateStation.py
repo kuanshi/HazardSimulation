@@ -89,11 +89,11 @@ def create_stations(input_file, output_file, min_id, max_id):
         run_tag: 0 - success, 1 - input failure, 2 - outupt failure
     """
 	# Reading csv data
-	run_tag = 0
+	run_tag = 1
 	try:
 		stn_df = pd.read_csv(input_file, header=0, index_col=0)
 	except:
-		run_tag = 1
+		run_tag = 0
 		return run_tag
 	# Max and Min IDs
 	stn_ids_min = np.min(stn_df.index.values)

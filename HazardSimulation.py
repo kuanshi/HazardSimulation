@@ -83,7 +83,11 @@ if __name__ == '__main__':
         max_ID = site_info['max_ID']
         # Creating stations from the csv input file
         stations = create_stations(input_file, output_file, min_ID, max_ID)
-    print('HazardSimulation: stations created.')
+    if stations:
+        print('HazardSimulation: stations created.')
+    else:
+        print('HazardSimulation: please check the "Input" directory in the configuration json file.')
+        exit()
     #print(stations)
 
     # Scenarios
