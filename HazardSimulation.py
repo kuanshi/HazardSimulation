@@ -75,10 +75,10 @@ if __name__ == '__main__':
     print('HazardSimulation: creating stations.')
     site_info = hazard_info['Site']
     if site_info['Type'] == 'From_CSV':
-        input_file = input_dir + site_info['input_file']
+        input_file = os.path.join(input_dir,site_info['input_file'])
         output_file = site_info.get('output_file',False)
         if output_file:
-            output_file = output_dir + output_file
+            output_file = os.path.join(output_dir, output_file)
         min_ID = site_info['min_ID']
         max_ID = site_info['max_ID']
         # Creating stations from the csv input file
@@ -138,39 +138,42 @@ if __name__ == '__main__':
     # Selecting ground motion records
     if scenario_info['Type'] == 'Earthquake':
         # Selecting records
-        print('HazardSimulation: selecting ground motion records.')
         target_T = event_info['IntensityMeasure']['Periods']
-        data_source = event_info['Database']
-        sf_max = event_info['ScalingFactor']['Maximum']
-        sf_min = event_info['ScalingFactor']['Minimum']
-        gm_id, gm_file = select_ground_motion(target_T, ln_psa_mr, data_source,
-                                              sf_max, sf_min, output_dir, 'EventGrid.csv',
-                                              stations['Stations'])
-        print('HazardSimulation: ground motion records selected.')
-        #print(gm_id)
-        gm_id = [int(i) for i in np.unique(gm_id)]
-        gm_file = [i for i in np.unique(gm_file)]
-        runtag = output_all_ground_motion_info(gm_id, gm_file, output_dir, 'RecordsList.csv')
-        if runtag:
-            print('HazardSimulation: the ground motion list saved.')
-        else:
-            print('HazardSimulation: warning - issues with saving the ground motion list.')
-        print(gm_id)
-        print(gm_file)
-        # Downloading records
-        user_name = event_info.get('UserName', None)
-        user_password = event_info.get('UserPassword', None)
-        if (user_name is not None) and (user_password is not None):
-            print('HazardSimulation: downloading ground motion records.')
-            raw_dir = download_ground_motion(gm_id, user_name,
-                                             user_password, output_dir)
-            if raw_dir:
-                print('HazardSimulation: ground motion records downloaded.')
-                # Parsing records
-                print('HazardSimulation: parsing records.')
-                record_dir = parse_record(gm_file, raw_dir, output_dir,
-                                          event_info['Database'],
-                                          event_info['OutputFormat'])
-                print('HazardSimulation: records parsed.')
+        data_source = event_info.get('Database',0)
+        if data_source:
+            print('HazardSimulation: selecting ground motion records.')
+            sf_max = event_info['ScalingFactor']['Maximum']
+            sf_min = event_info['ScalingFactor']['Minimum']
+            gm_id, gm_file = select_ground_motion(target_T, ln_psa_mr, data_source,
+                                                  sf_max, sf_min, output_dir, 'EventGrid.csv',
+                                                  stations['Stations'])
+            print('HazardSimulation: ground motion records selected.')
+            #print(gm_id)
+            gm_id = [int(i) for i in np.unique(gm_id)]
+            gm_file = [i for i in np.unique(gm_file)]
+            runtag = output_all_ground_motion_info(gm_id, gm_file, output_dir, 'RecordsList.csv')
+            if runtag:
+                print('HazardSimulation: the ground motion list saved.')
             else:
-                print('HazardSimulation: No records to be parsed.')
+                print('HazardSimulation: warning - issues with saving the ground motion list.')
+            print(gm_id)
+            print(gm_file)
+            # Downloading records
+            user_name = event_info.get('UserName', None)
+            user_password = event_info.get('UserPassword', None)
+            if (user_name is not None) and (user_password is not None):
+                print('HazardSimulation: downloading ground motion records.')
+                raw_dir = download_ground_motion(gm_id, user_name,
+                                                 user_password, output_dir)
+                if raw_dir:
+                    print('HazardSimulation: ground motion records downloaded.')
+                    # Parsing records
+                    print('HazardSimulation: parsing records.')
+                    record_dir = parse_record(gm_file, raw_dir, output_dir,
+                                              event_info['Database'],
+                                              event_info['OutputFormat'])
+                    print('HazardSimulation: records parsed.')
+                else:
+                    print('HazardSimulation: No records to be parsed.')
+        else:
+            print('HazardSimulation: ground motion selection is not requested.')
