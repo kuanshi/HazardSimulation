@@ -41,6 +41,7 @@
 import json
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from java.io import *
 from java.lang import *
@@ -145,7 +146,7 @@ def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, m
     # Collecting source features
     maxSources = min(maxSources, num_sources)
     feature_collection = []
-    for i in range(maxSources):
+    for i in tqdm(range(maxSources), desc='Sources'):
         source_index = source_collection.iloc[i, 0]
         distanceToSource = source_collection.iloc[i, 1]
         # Checking maximum distance
@@ -153,7 +154,10 @@ def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, m
             break
         # Getting rupture distances
         rupSource = erf.getSource(source_index)
-        rupList = rupSource.getRuptureList()
+        try:
+            rupList = rupSource.getRuptureList()
+        except:
+            continue
         rup_tag = []
         rup_dist = []
         for j in range(rupList.size()):
@@ -174,6 +178,9 @@ def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, m
             rup_index = rup_collection.iloc[j, 0]
             cur_dist = rup_collection.iloc[j, 1]
             rupture = rupList.get(rup_index)
+            maf = rupture.getMeanAnnualRate(erf.getTimeSpan().getDuration())
+            if maf <= 0.:
+                continue
             ruptureSurface = rupture.getRuptureSurface()
             # Properties
             cur_dict['properties'] = dict()
@@ -188,38 +195,41 @@ def export_to_json(erf, site_loc, outfile = None, EqName = None, minMag = 0.0, m
             cur_dict['properties'].update({'Magnitude': Mag})
             cur_dict['properties'].update({'Rupture': int(rup_index)})
             cur_dict['properties'].update({'Source': int(source_index)})
-            cur_dict['properties'].update({'Distance': float(cur_dist)})
-            distanceRup = rupture.getRuptureSurface().getDistanceRup(site_loc)
-            cur_dict['properties'].update({'DistanceRup': float(distanceRup)})
-            distanceSeis = rupture.getRuptureSurface().getDistanceSeis(site_loc)
-            cur_dict['properties'].update({'DistanceSeis': float(distanceSeis)})
-            distanceJB = rupture.getRuptureSurface().getDistanceJB(site_loc)
-            cur_dict['properties'].update({'DistanceJB': float(distanceJB)})
-            distanceX = rupture.getRuptureSurface().getDistanceX(site_loc)
-            cur_dict['properties'].update({'DistanceX': float(distanceX)})
-            Prob = rupture.getProbability()
-            cur_dict['properties'].update({'Probability': float(Prob)})
-            maf = rupture.getMeanAnnualRate(erf.getTimeSpan().getDuration())
-            cur_dict['properties'].update({'MeanAnnualRate': abs(float(maf))})
-            # Geometry
-            cur_dict['geometry'] = dict()
-            if (ruptureSurface.isPointSurface()):
-                # Point source
-                pointSurface = ruptureSurface
-                location = pointSurface.getLocation()
-                cur_dict['geometry'].update({'type': 'Point'})
-                cur_dict['geometry'].update({'coordinates': [float(location.getLongitude()), float(location.getLatitude())]})
-            else:
-                # Line source
-                try:
-                    trace = ruptureSurface.getUpperEdge()
-                except:
-                    trace = ruptureSurface.getEvenlyDiscritizedUpperEdge()
-                coordinates = []
-                for k in trace:
-                    coordinates.append([float(k.getLongitude()), float(k.getLatitude())])
-                cur_dict['geometry'].update({'type': 'LineString'})
-                cur_dict['geometry'].update({'coordinates': coordinates})
+            if outfile is not None:
+                # these calls are time-consuming, so only run them if one needs
+                # detailed outputs of the sources
+                cur_dict['properties'].update({'Distance': float(cur_dist)})
+                distanceRup = rupture.getRuptureSurface().getDistanceRup(site_loc)
+                cur_dict['properties'].update({'DistanceRup': float(distanceRup)})
+                distanceSeis = rupture.getRuptureSurface().getDistanceSeis(site_loc)
+                cur_dict['properties'].update({'DistanceSeis': float(distanceSeis)})
+                distanceJB = rupture.getRuptureSurface().getDistanceJB(site_loc)
+                cur_dict['properties'].update({'DistanceJB': float(distanceJB)})
+                distanceX = rupture.getRuptureSurface().getDistanceX(site_loc)
+                cur_dict['properties'].update({'DistanceX': float(distanceX)})
+                Prob = rupture.getProbability()
+                cur_dict['properties'].update({'Probability': float(Prob)})
+                maf = rupture.getMeanAnnualRate(erf.getTimeSpan().getDuration())
+                cur_dict['properties'].update({'MeanAnnualRate': abs(float(maf))})
+                # Geometry
+                cur_dict['geometry'] = dict()
+                if (ruptureSurface.isPointSurface()):
+                    # Point source
+                    pointSurface = ruptureSurface
+                    location = pointSurface.getLocation()
+                    cur_dict['geometry'].update({'type': 'Point'})
+                    cur_dict['geometry'].update({'coordinates': [float(location.getLongitude()), float(location.getLatitude())]})
+                else:
+                    # Line source
+                    try:
+                        trace = ruptureSurface.getUpperEdge()
+                    except:
+                        trace = ruptureSurface.getEvenlyDiscritizedUpperEdge()
+                    coordinates = []
+                    for k in trace:
+                        coordinates.append([float(k.getLongitude()), float(k.getLatitude())])
+                    cur_dict['geometry'].update({'type': 'LineString'})
+                    cur_dict['geometry'].update({'coordinates': coordinates})
             # Appending
             feature_collection.append(cur_dict)
         # end for j
@@ -277,7 +287,89 @@ def get_DataSource(paramName, siteData):
     return 1
 
 
-def get_IM(gmpe_info, source_info, station_info, im_info):
+def get_site_prop(gmpe_name, siteSpec):
+
+    # GMPE
+    try:
+        imr = CreateIMRInstance(gmpe_name)
+    except:
+        print('Please check GMPE name.')
+        return 1
+    # Site data
+    sites = ArrayList()
+    for cur_site in siteSpec:
+        cur_loc = Location(cur_site['Location']['Latitude'], cur_site['Location']['Longitude'])
+        sites.add(Site(cur_loc))
+    siteDataProviders = OrderedSiteDataProviderList.createSiteDataProviderDefaults()
+    try:
+        availableSiteData = siteDataProviders.getAllAvailableData(sites)
+    except:
+        print('Error in getAllAvailableData')
+        return 1
+    siteTrans = SiteTranslator()
+    # Looping over all sites
+    site_prop = []
+    for i in range(len(siteSpec)):
+        site_tmp = dict()
+        # Current site
+        site = sites.get(i)
+        # Location
+        cur_site = siteSpec[i]
+        locResults = {'Latitude': cur_site['Location']['Latitude'],
+                      'Longitude': cur_site['Location']['Longitude']}
+        cur_loc = Location(cur_site['Location']['Latitude'], cur_site['Location']['Longitude'])
+        siteDataValues = ArrayList()
+        for j in range(len(availableSiteData)):
+            siteDataValues.add(availableSiteData.get(j).getValue(i))
+        imrSiteParams = imr.getSiteParams()
+        siteDataResults = []
+        # Setting site parameters
+        for j in range(imrSiteParams.size()):
+            siteParam = imrSiteParams.getByIndex(j)
+            newParam = Parameter.clone(siteParam)
+            siteDataFound = siteTrans.setParameterValue(newParam, siteDataValues)
+            if (str(newParam.getName())=='Vs30' and bool(cur_site.get('Vs30', None))):
+                newParam.setValue(Double(cur_site['Vs30']))
+                siteDataResults.append({'Type': 'Vs30',
+                                        'Value': float(newParam.getValue()),
+                                        'Source': 'User Defined'})
+            elif (str(newParam.getName())=='Vs30 Type' and bool(cur_site.get('Vs30', None))):
+                newParam.setValue("Measured")
+                siteDataResults.append({'Type': 'Vs30 Type',
+                                        'Value': 'Measured',
+                                        'Source': 'User Defined'})
+            elif siteDataFound:
+                provider = "Unknown"
+                provider = get_DataSource(newParam.getName(), siteDataValues)
+                if 'String' in str(type(newParam.getValue())):
+                    tmp_value = str(newParam.getValue())
+                elif 'Double' in str(type(newParam.getValue())):
+                    tmp_value = float(newParam.getValue())
+                    if str(newParam.getName())=='Vs30':
+                            cur_site.update({'Vs30': tmp_value})
+                else:
+                    tmp_value = str(newParam.getValue())
+                siteDataResults.append({'Type': str(newParam.getName()),
+                                        'Value': tmp_value,
+                                        'Source': str(provider)})
+            else:
+                newParam.setValue(siteParam.getDefaultValue())
+                siteDataResults.append({'Type': str(siteParam.getName()),
+                                        'Value': float(siteParam.getDefaultValue()),
+                                        'Source': 'Default'})
+            site.addParameter(newParam)
+            # End for j
+        # Updating site specifications
+        siteSpec[i] = cur_site
+        site_tmp.update({'Location': locResults,
+                         'SiteData': siteDataResults})
+        site_prop.append(site_tmp)
+
+    # Return
+    return siteSpec, sites, site_prop
+
+
+def get_IM(gmpe_info, erf, sites, siteSpec, site_prop, source_info, station_info, im_info):
 
     # GMPE name
     gmpe_name = gmpe_info['Type']
@@ -301,9 +393,10 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
                                  source_info['Location']['Depth'])
         eqRup.setPointSurface(eqRupLocation, source_info['AverageDip'])
         eqRup.setAveRake(source_info['AverageRake'])
+        magnitude = source_info['Magnitude']
+        meanAnnualRate = None
     elif source_info['Type'] == 'ERF':
         timeSpan = TimeSpan(TimeSpan.NONE, TimeSpan.YEARS)
-        erf = getERF(source_info['RuptureForecast'], True)
         erfParams = source_info.get('Parameters', None)
         # Additional parameters (if any)
         if erfParams is not None:
@@ -355,18 +448,6 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
         tag_Ds575 = True
     if 'Ds595' in im_info['Type']:
         tag_Ds595 = True
-    # Site data
-    sites = ArrayList()
-    for cur_site in siteSpec:
-        cur_loc = Location(float(cur_site['Location']['Latitude']), float(cur_site['Location']['Longitude']))
-        sites.add(Site(cur_loc))
-    siteDataProviders = OrderedSiteDataProviderList.createSiteDataProviderDefaults()
-    try:
-        availableSiteData = siteDataProviders.getAllAvailableData(sites)
-    except:
-        print('Error in getAllAvailableData')
-        return 1, station_info
-    siteTrans = SiteTranslator()
     # Looping over sites
     gm_collector = []
     for i in range(len(siteSpec)):
@@ -375,54 +456,7 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
         site = sites.get(i)
         # Location
         cur_site = siteSpec[i]
-        locResults = {'Latitude': cur_site['Location']['Latitude'],
-                      'Longitude': cur_site['Location']['Longitude']}
-        cur_loc = Location(float(cur_site['Location']['Latitude']), float(cur_site['Location']['Longitude']))
-        siteDataValues = ArrayList()
-        for j in range(len(availableSiteData)):
-            siteDataValues.add(availableSiteData.get(j).getValue(i))
-        imrSiteParams = imr.getSiteParams()
-        siteDataResults = []
-        # Setting site parameters
-        for j in range(imrSiteParams.size()):
-            siteParam = imrSiteParams.getByIndex(j)
-            newParam = Parameter.clone(siteParam)
-            siteDataFound = siteTrans.setParameterValue(newParam, siteDataValues)
-            if (str(newParam.getName())=='Vs30' and bool(cur_site.get('Vs30', None))):
-                newParam.setValue(Double(cur_site['Vs30']))
-                siteDataResults.append({'Type': 'Vs30',
-                                        'Value': float(newParam.getValue()),
-                                        'Source': 'User Defined'})
-            elif (str(newParam.getName())=='Vs30 Type' and bool(cur_site.get('Vs30', None))):
-                newParam.setValue("Measured")
-                siteDataResults.append({'Type': 'Vs30 Type',
-                                        'Value': 'Measured',
-                                        'Source': 'User Defined'})
-            elif siteDataFound:
-                provider = "Unknown"
-                provider = get_DataSource(newParam.getName(), siteDataValues)
-                if 'String' in str(type(newParam.getValue())):
-                    tmp_value = str(newParam.getValue())
-                elif 'Double' in str(type(newParam.getValue())):
-                    tmp_value = float(newParam.getValue())
-                    if str(newParam.getName())=='Vs30':
-                            cur_site.update({'Vs30': tmp_value})
-                else:
-                    tmp_value = str(newParam.getValue())
-                siteDataResults.append({'Type': str(newParam.getName()),
-                                        'Value': tmp_value,
-                                        'Source': str(provider)})
-            else:
-                newParam.setValue(siteParam.getDefaultValue())
-                siteDataResults.append({'Type': str(siteParam.getName()),
-                                        'Value': float(siteParam.getDefaultValue()),
-                                        'Source': 'Default'})
-            site.addParameter(newParam)
-            # End for j
-        # Updating site specifications
-        siteSpec[i] = cur_site
-        gmResults.update({'Location': locResults,
-                          'SiteData': siteDataResults})
+        # Set up the site in the imr
         imr.setSite(site)
         try:
             stdDevParam = imr.getParameter(StdDevTypeParam.NAME)
@@ -499,7 +533,9 @@ def get_IM(gmpe_info, source_info, station_info, im_info):
     if station_info['Type'] == 'SiteList':
         station_info.update({'SiteList': siteSpec})
     # Final results
-    res = {'Periods': cur_T,
+    res = {'Magnitude': magnitude,
+           'MeanAnnualRate': meanAnnualRate,
+           'Periods': cur_T,
            'GroundMotions': gm_collector}
     # return
     return res, station_info
