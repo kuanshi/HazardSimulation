@@ -102,11 +102,7 @@ License:
 2. chromedriver is subjected to Apache-2.0 License
 
 Extra Python packages:
-[JPype1](https://pypi.org/project/JPype1/)
-
-[selenium](https://pypi.org/project/selenium/)
-
-[tqdm](https://pypi.org/project/tqdm/2.2.3/)
+[JPype1](https://pypi.org/project/JPype1/), [selenium](https://pypi.org/project/selenium/), [tqdm](https://pypi.org/project/tqdm/2.2.3/)
 
 
 
