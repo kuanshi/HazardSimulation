@@ -410,7 +410,7 @@ def get_IM(gmpe_info, erf, sites, siteSpec, site_prop, source_info, station_info
         # Rupture
         eqRup = eqSource.getRupture(source_info['RuptureIndex'])
         # Properties
-        magitude = eqRup.getMag()
+        magnitude = eqRup.getMag()
         averageDip = eqRup.getRuptureSurface().getAveDip()
         averageRake = eqRup.getAveRake()
         # Probability
@@ -451,7 +451,7 @@ def get_IM(gmpe_info, erf, sites, siteSpec, site_prop, source_info, station_info
     # Looping over sites
     gm_collector = []
     for i in range(len(siteSpec)):
-        gmResults = dict()
+        gmResults = site_prop[i]
         # Current site
         site = sites.get(i)
         # Location

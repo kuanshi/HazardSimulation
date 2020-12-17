@@ -73,7 +73,7 @@ def compute_spectra(scenarios, stations, gmpe_info, im_info):
 	# Configuring site properties
 	siteSpec, sites, site_prop = get_site_prop(gmpe_info['Type'], station_list)
 	# Loop over scenarios
-	for i, s in enumerate(scenarios):
+	for i, s in enumerate(tqdm(scenarios, desc='Scenarios')):
 		# Rupture
 		source_info = scenarios[i]
 		# Computing IM
@@ -114,11 +114,11 @@ def compute_intra_event_residual(sa_intra_cm, periods, station_data, num_simu):
 	if sa_intra_cm == 'Jayaram & Baker (2009)':
 	    rho = np.zeros((num_stations, num_stations, num_periods))
 	    for i in range(num_stations):
-		    loc_i = np.array([station_data[i]['Location']['Latitude'],
-			                  station_data[i]['Location']['Longitude']])
+		    loc_i = np.array([station_data[i]['Latitude'],
+			                  station_data[i]['Longitude']])
 		    for j in range(num_stations):
-			    loc_j = np.array([station_data[j]['Location']['Latitude'],
-				                  station_data[j]['Location']['Longitude']])
+			    loc_j = np.array([station_data[j]['Latitude'],
+				                  station_data[j]['Longitude']])
 			    # Computing station-wise distances
 			    stn_dist = np.linalg.norm(loc_i - loc_j) * 111.0
 			    for k in range(num_periods):
@@ -141,13 +141,13 @@ def compute_intra_event_residual(sa_intra_cm, periods, station_data, num_simu):
 	return residuals
 
 
-def export_im(stations, T, im_data, output_dir, filename):
+def export_im(stations, T, im_data, eq_data, output_dir, filename):
 
 	#try:
 	    # Station number
 		num_stations = len(stations)
 		# Scenario number
-		num_scenarios = len(im_data)
+		num_scenarios = len(eq_data)
 		# Saving large files to HDF while small files to JSON
 		if num_scenarios > 10:
 			# Pandas DataFrame
@@ -158,9 +158,9 @@ def export_im(stations, T, im_data, output_dir, filename):
 			for x in range(1, im_data[0][0, :, :].shape[1]+1):
 				for y in T:
 					h_eq.append('Record-'+str(x)+'-lnSa-{0}s'.format(y))
-			columns = pd.MultiIndex.from_product([h_scenarios, h_eq])
-			index = ['Site-'+str(x) for x in range(1, num_stations + 1)]
-			df = pd.DataFrame(index=index, columns=columns)
+			index = pd.MultiIndex.from_product([h_scenarios, h_eq])
+			columns = ['Site-'+str(x) for x in range(1, num_stations + 1)]
+			df = pd.DataFrame(index=index, columns=columns, dtype=float)
 			# Data
 			for i in range(num_stations):
 				tmp = []
@@ -175,10 +175,14 @@ def export_im(stations, T, im_data, output_dir, filename):
 					for x in np.ndarray.tolist(im_data[j][i, :, :].T):
 						for y in x:
 							tmp.append(y)
-				df.loc['Site-'+str(i+1), :] = tmp
+				df['Site-'+str(i+1)] = tmp
 			# HDF output
+			try:
+				os.remove(os.path.join(output_dir, filename.replace('.json', '.h5')))
+			except:
+				pass
 			hdf = pd.HDFStore(os.path.join(output_dir, filename.replace('.json', '.h5')))
-			hdf.put('SiteIM', df)
+			hdf.put('SiteIM', df, format='table', complib='zlib')
 			hdf.close()
 		else:
 			res = []
@@ -190,9 +194,21 @@ def export_im(stations, T, im_data, output_dir, filename):
 					   'Vs30': int(stations[i]['Vs30'])
 					  }
 				tmp.update({'Periods': T})
-				tmp.update({'lnSa': np.ndarray.tolist(im_data[j][i, :, :]) for j in range(num_scenarios)})
+				tmp_im = []
+				for j in range(num_scenarios):
+					tmp_im.append(np.ndarray.tolist(im_data[j][i, :, :]))
+				if len(tmp_im) == 1:
+					# Simplifying the data structure if only one scenario exists
+					tmp_im = tmp_im[0]
+				tmp.update({'lnSa': tmp_im})
 				res.append(tmp)
-			res = {'Station_lnSa': res}
+			maf_out = []
+			for cur_eq in eq_data:
+				tmp = {'Magnitdue': cur_eq[0],
+				       'MeanAnnualRate': cur_eq[1]}
+				maf_out.append(tmp)
+			res = {'Station_lnSa': res,
+			       'Earthquake_MAF': maf_out}
 			# save
 			with open(os.path.join(output_dir, filename), "w") as f:
 				json.dump(res, f, indent=2)
@@ -210,18 +226,18 @@ def simulate_ground_motion(stations, psa_raw, num_simu, correlation_info):
 	# Sa intra-event model
 	sa_intra_cm = correlation_info['SaIntraEvent']
 	# Periods
-	periods = cur_psa_raw[0]['Periods']
+	periods = psa_raw[0]['Periods']
 	# Computing inter event residuals
 	t_start = time.time()
 	epsilon = compute_inter_event_residual(sa_inter_cm, periods, num_simu)
 	print('ComputeIntensityMeasure: inter-event correlation {0} sec'.format(time.time() - t_start))
 	# Computing intra event residuals
 	t_start = time.time()
-	eta = compute_intra_event_residual(sa_intra_cm, periods, sa_data, num_simu)
+	eta = compute_intra_event_residual(sa_intra_cm, periods, stations, num_simu)
 	print('ComputeIntensityMeasure: intra-event correlation {0} sec'.format(time.time() - t_start))
 	ln_psa_mr = []
 	mag_maf = []
-	for cur_psa_raw in psa_raw:
+	for cur_psa_raw in tqdm(psa_raw, desc='Scenarios'):
 		# Spectral data (median and dispersions)
 		sa_data = cur_psa_raw['GroundMotions']
 	    # Combining inter- and intra-event residuals
@@ -234,8 +250,9 @@ def simulate_ground_motion(stations, psa_raw, num_simu, correlation_info):
 			ln_psa[:, :, i] = ln_sa + inter_sigma_sa * epsilon_m + intra_sigma_sa * eta[:, :, i]
 
 		ln_psa_mr.append(ln_psa)
+		mag_maf.append([cur_psa_raw['Magnitude'], cur_psa_raw['MeanAnnualRate']])
     # return
-	return ln_psa_mr
+	return ln_psa_mr, mag_maf
 
 
 def simulate_storm(app_dir, input_dir, output_dir):

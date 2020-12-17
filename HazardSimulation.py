@@ -119,14 +119,14 @@ if __name__ == '__main__':
         print('HazardSimulation: uncorrelated response spectra computed.')
         #print(psa_raw)
         # Computing log mean Sa
-        ln_psa_mr, mag = simulate_ground_motion(stations['Stations'], psa_raw,
-                                                event_info['NumberPerSite'],
-                                                event_info['CorrelationModel'])
+        ln_psa_mr, mag_maf = simulate_ground_motion(stations['Stations'], psa_raw,
+                                                    event_info['NumberPerSite'],
+                                                    event_info['CorrelationModel'])
         print('HazardSimulation: correlated response spectra computed.')
         if event_info['SaveIM']:
             print('HazardSimulation: saving simulated intensity measures.')
             _ = export_im(stations['Stations'], event_info['IntensityMeasure']['Periods'],
-                          ln_psa_mr, output_dir, 'SiteIM.json')
+                          ln_psa_mr, mag_maf, output_dir, 'SiteIM.json')
             print('HazardSimulation: simulated intensity measures saved.')
         #print(np.exp(ln_psa_mr[0][0, :, 1]))
         #print(np.exp(ln_psa_mr[0][1, :, 1]))
