@@ -42,6 +42,7 @@ import os
 import argparse, posixpath, json
 import numpy as np
 import pandas as pd
+import time
 import jpype
 from jpype import imports
 from jpype.types import *
@@ -118,12 +119,15 @@ if __name__ == '__main__':
         print('HazardSimulation: uncorrelated response spectra computed.')
         #print(psa_raw)
         # Computing log mean Sa
-        ln_psa_mr = simulate_ground_motion(psa_raw, event_info['NumberPerSite'],
-                                           event_info['CorrelationModel'])
+        ln_psa_mr, mag = simulate_ground_motion(stations['Stations'], psa_raw,
+                                                event_info['NumberPerSite'],
+                                                event_info['CorrelationModel'])
         print('HazardSimulation: correlated response spectra computed.')
         if event_info['SaveIM']:
+            print('HazardSimulation: saving simulated intensity measures.')
             _ = export_im(stations['Stations'], event_info['IntensityMeasure']['Periods'],
                           ln_psa_mr, output_dir, 'SiteIM.json')
+            print('HazardSimulation: simulated intensity measures saved.')
         #print(np.exp(ln_psa_mr[0][0, :, 1]))
         #print(np.exp(ln_psa_mr[0][1, :, 1]))
     elif scenario_info['Type'] == 'Wind':
@@ -144,10 +148,11 @@ if __name__ == '__main__':
             print('HazardSimulation: selecting ground motion records.')
             sf_max = event_info['ScalingFactor']['Maximum']
             sf_min = event_info['ScalingFactor']['Minimum']
+            start_time = time.time()
             gm_id, gm_file = select_ground_motion(target_T, ln_psa_mr, data_source,
                                                   sf_max, sf_min, output_dir, 'EventGrid.csv',
                                                   stations['Stations'])
-            print('HazardSimulation: ground motion records selected.')
+            print('HazardSimulation: ground motion records selected  ({0} s).'.format(time.time() - start_time))
             #print(gm_id)
             gm_id = [int(i) for i in np.unique(gm_id)]
             gm_file = [i for i in np.unique(gm_file)]
