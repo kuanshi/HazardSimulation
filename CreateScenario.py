@@ -51,6 +51,9 @@ def create_earthquake_scenarios(scenario_info, stations):
 
     # Number of scenarios
     source_num = scenario_info.get('Number', 1)
+    if source_num == 'All':
+        # Large number to consider all sources in the ERF
+        source_num = 10000000
     # Directly defining earthquake ruptures
     if scenario_info['Generator'] == 'Simulation':
         # TODO:
@@ -80,7 +83,7 @@ def create_earthquake_scenarios(scenario_info, stations):
             erf_data = export_to_json(eq_source, ref_station, outfile = None, \
                                       EqName = source_name, minMag = min_M, \
                                       maxMag = max_M, maxDistance = max_R, \
-                                      maxSources = 500)
+                                      maxSources = np.max([500, source_num]))
             # Parsing data
             feat = erf_data['features']
             tag = []
