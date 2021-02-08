@@ -1,4 +1,4 @@
-simcenter_add_executable(NAME chromedriver.exe)
-simcenter_add_executable(NAME chromedriver_linux)
-simcenter_add_executable(NAME chromedriver_mac)
+simcenter_add_file(NAME chromedriver.exe)
+simcenter_add_file(NAME chromedriver_linux)
+simcenter_add_file(NAME chromedriver_mac)
 
