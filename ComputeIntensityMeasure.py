@@ -358,23 +358,33 @@ def convert_wind_speed(event_info, simu_res):
             alpha_t = 9.5
             zg_t = 274.32
         # conversion
-        pws = np.zeros(pws_raw.shape)
+        pws_raw = interp_wind_by_height(pws_raw, measure_height, reference_height)
         print(np.max(pws_raw))
-        for i in range(len(measure_height)):
-            # computing gradient-height wind speed
-            pws_tmp = pws_raw[:, i] * (zg / measure_height[i]) ** (1.0 / alpha)
-            #print(np.max(pws_tmp))
-            # converting exposure
-            pws_tmp = pws_tmp * (reference_height / zg_t) ** (1.0 / alpha_t)
-            print(np.max(pws_tmp))
-            # coverting gust duration
-            pws[:, i] = pws_tmp * gust_factor_ESDU(gust_duration_simu, gust_duration)
+        # computing gradient-height wind speed
+        pws_tmp = pws_raw * (zg / reference_height) ** (1.0 / alpha)
+        # converting exposure
+        pws_tmp = pws_tmp * (reference_height / zg_t) ** (1.0 / alpha_t)
+        pws = pws_tmp * gust_factor_ESDU(gust_duration_simu, gust_duration)
+        print(np.max(pws))        
         # appending to pws_mr
         pws_mr.append(pws)
 
     print('ComputeIntensityMeasure: wind speed conversion completed.')
     # return
     return pws_mr
+
+
+def interp_wind_by_height(pws_ip, height_simu, height_ref):
+    """
+    interp_wind_by_height: interpolating the wind simulation results by the reference height
+    """
+    num_stat = pws_ip.shape[0]
+    pws_op = np.zeros(num_stat)
+    for i in range(num_stat):
+        pws_op[i] = np.interp(height_ref, height_simu, pws_ip[i, :], left = pws_ip[0], right = pws_ip[-1])
+
+    # return
+    return pws_op
 
 
 def gust_factor_ESDU(gd_c, gd_t):
@@ -418,10 +428,10 @@ def export_pws(stations, pws, output_dir, filename = 'EventGrid.csv'):
     df = pd.DataFrame.from_dict(d)
     df.to_csv(os.path.join(output_dir, filename), index = False)
     for i in range(station_num):
-        pws_op = [pws[0][i, 0]]
+        pws_op = [pws[0][i]]
         if len(pws) > 1:
             for j in range(len(pws) - 1):
-                pws_op.append(pws[j + 1][i, 0])
+                pws_op.append(pws[j + 1][i])
         d = {
             'PWS': pws_op    
         }
