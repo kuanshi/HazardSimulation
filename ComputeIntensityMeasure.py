@@ -44,7 +44,7 @@ import sys
 import json
 import numpy as np
 import pandas as pd
-from gmpe import CorrelationModel, WindFieldSimulation
+from imm import CorrelationModel, WindFieldSimulation
 from FetchOpenSHA import *
 from tqdm import tqdm
 import time
