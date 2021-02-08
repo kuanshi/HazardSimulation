@@ -69,6 +69,30 @@ class LinearAnalyticalModel_SnaikiWu_2017:
         self.zp = []
         self.mesh_info = []
 
+
+    def set_delta_path(self, delta_path):
+        """
+        set_delta_path: perturbing the path coordiates and heading angle of the storm track
+        """
+        if (len(delta_path) == 3):
+            self.delta_path = delta_path
+        else:
+            print('WindFieldSimulation: the delta_path should have a size of 3, default delta_path used.')
+
+    
+    def set_delta_feat(self, delta_feat):
+        """
+        set_delta_feat: perturbing the central pressure difference, traslational speed, and max-wind-speed radius
+        """
+        if (len(delta_feat) == 3):
+            self.cyclone_pres = delta_feat[0] * 100.0
+            self.cyclone_sped = delta_feat[1] * 1000.0 / 3600.0
+            self.cyclone_radi = delta_feat[2]
+            self.cyclone_radm = self.cyclone_radi * 1000.0
+            self.Holland_B = 1.38 + 0.00184 * self.cyclone_pres / 100.0 - 0.00309 * self.cyclone_radi
+        else:
+            print('WindFieldSimulation: the delta_feat should have a size of 3, default delta_feat used.')
+
     
     def __interp_z0(self, lat, lon):
         """

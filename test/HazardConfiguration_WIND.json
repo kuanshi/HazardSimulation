@@ -24,12 +24,13 @@
           "TrackSimu": "Lat_w.csv"
         },
         "Mesh": {
-          "DivRad": 1000.0,
+          "DivRad": 10000.0,
           "DivDeg": 1.0
         }
     },
     "Event": {
-        "NumberPerSite": 1,
+        "NumberPerSite": 5,
+        "Perturbation": [0.0, 0.0, 90.0, 10.0, 10.0, 10.0],
         "IntensityMeasure": {
             "Type": "HAZUS-PWS",
             "MeasureHeight": [10.0, 10.0, 10.0],

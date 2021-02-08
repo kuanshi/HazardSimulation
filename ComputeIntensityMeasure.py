@@ -42,6 +42,7 @@ import os
 import subprocess
 import sys
 import json
+import copy
 import numpy as np
 import pandas as pd
 from imm import CorrelationModel, WindFieldSimulation
@@ -255,22 +256,50 @@ def simulate_ground_motion(stations, psa_raw, num_simu, correlation_info):
     return ln_psa_mr, mag_maf
 
 
-def simulate_storm(scenarios, model_type):
+def simulate_storm(scenarios, event_info, model_type):
 
     if (model_type == 'LinearAnalytical'):
+        num_per_site = event_info['NumberPerSite']
+        if (num_per_site == 1):
+            path_perturb = np.zeros(3)
+            feat_perturb = np.zeros(3)
+        else:
+            if (len(event_info.get('Perturbation', [])) != 6): 
+                print('ComputeIntensityMeasure: Perturbation should have a size of 6.')
+                path_perturb = np.array([0.5, 0.5, 90.0])
+                feat_perturb = np.array([10.0, 10.0, 10.0])
+                print('ComputeIntensityMeasure: [1.0, 1.0, 90.0, 10.0, 10.0, 10.0] is used for perturbations.')
+            else:
+                path_perturb = np.array(event_info['Perturbation'][0:3])
+                feat_perturb = np.array(event_info['Perturbation'][3:6])
         for i in range(len(scenarios)):
+            if (i == 1):
+                print('ComputeIntensityMeasure: currently supporting single scenario simulation only.')
+                return -1
             cur_scen = scenarios[i]
             param = cur_scen['CycloneParam']
             track = cur_scen['StormTrack']
-            model = WindFieldSimulation.LinearAnalyticalModel_SnaikiWu_2017(cyclone_param = param, storm_track = track)
-            if cur_scen['Terrain']:
-                model.add_reference_terrain(cur_scen['Terrain'])
-            model.set_cyclone_mesh(cur_scen['StormMesh'])
-            model.set_measure_height(cur_scen['MeasureHeight'])
-            model.define_track(cur_scen['TrackSimu'])
-            model.add_stations(cur_scen['StationList'])
-            model.compute_wind_field()
-            res = model.get_station_data()
+            np.random.seed(100)
+            res = []
+            for j in range(num_per_site):
+                model = WindFieldSimulation.LinearAnalyticalModel_SnaikiWu_2017(cyclone_param = param, storm_track = track)
+                if cur_scen['Terrain']:
+                    model.add_reference_terrain(cur_scen['Terrain'])
+                model.set_cyclone_mesh(cur_scen['StormMesh'])
+                model.set_measure_height(cur_scen['MeasureHeight'])
+                model.define_track(cur_scen['TrackSimu'])
+                model.add_stations(cur_scen['StationList'])
+                delta_path = (np.random.rand(3) - 0.5) * path_perturb
+                delta_feat = np.array(param[3:6]) + (np.random.rand(3) - 0.5) * feat_perturb
+                # this just an engineering judgement that the pressure difference, moving speed, and max-wind-speed radius
+                # should not be less than 10.0 in the value.
+                delta_feat[delta_feat < 10.0] = 10.0
+                print('dLatitude, dLongtitude, dAngle = ', delta_path)
+                print('dP, v, Rmax = ', delta_feat)
+                model.set_delta_path(delta_path)
+                model.set_delta_feat(delta_feat)
+                model.compute_wind_field()
+                res.append(model.get_station_data())
     else:
         print('ComputeIntensityMeasure: currently only supporting LinearAnalytical model')
 
@@ -296,50 +325,56 @@ def convert_wind_speed(event_info, simu_res):
             return -1
         gust_duration = event_info['IntensityMeasure']['GustDuration']
         reference_height = event_info['IntensityMeasure']['ReferenceHeight']
-    # Reading simulation heights
-    measure_height = simu_res['PWS']['height']
-    # Reading simulated wind speed
-    pws_raw = np.array(simu_res['PWS']['windspeed'])
-    # Reading z0 in the simulation
-    z0_simu = np.array(simu_res['z0'])
-    # Reading gust duration in the simulation
-    gust_duration_simu = simu_res['PWS']['duration']
-    # quick check the size
-    if pws_raw.shape[1] != len(measure_height):
-        print('ComputeIntensityMeasure: please check the output wind speed results.')
-        return -1
-    # ASCE 7-16 conversion (Chapter C26)
-    # station-wise empirical exponent \alpha
-    alpha = 5.65 * (z0_simu ** (-0.133))
-    # station-wise gradient height
-    zg = 450.0 * (z0_simu ** 0.125)
-    # target exposure alpha and graident height
-    if (exposure == 'B'):
-        alpha_t = 7.0
-        zg_t = 365.76
-    elif (exposure == 'D'):
-        alpha_t = 11.5
-        zg_t = 213.36
-    else:
-        # 'C'
-        alpha_t = 9.5
-        zg_t = 274.32
-    # conversion
-    pws = np.zeros(pws_raw.shape)
-    print(np.max(pws_raw))
-    for i in range(len(measure_height)):
-        # computing gradient-height wind speed
-        pws_tmp = pws_raw[:, i] * (zg / measure_height[i]) ** (1.0 / alpha)
-        print(np.max(pws_tmp))
-        # converting exposure
-        pws_tmp = pws_tmp * (reference_height / zg_t) ** (1.0 / alpha_t)
-        print(np.max(pws_tmp))
-        # coverting gust duration
-        pws[:, i] = pws_tmp * gust_factor_ESDU(gust_duration_simu, gust_duration)
+
+    pws_mr = []
+    for i in range(len(simu_res)):
+        cur_res = simu_res[i]
+        # Reading simulation heights
+        measure_height = cur_res['PWS']['height']
+        # Reading simulated wind speed
+        pws_raw = np.array(cur_res['PWS']['windspeed'])
+        # Reading z0 in the simulation
+        z0_simu = np.array(cur_res['z0'])
+        # Reading gust duration in the simulation
+        gust_duration_simu = cur_res['PWS']['duration']
+        # quick check the size
+        if pws_raw.shape[1] != len(measure_height):
+            print('ComputeIntensityMeasure: please check the output wind speed results.')
+            return -1
+        # ASCE 7-16 conversion (Chapter C26)
+        # station-wise empirical exponent \alpha
+        alpha = 5.65 * (z0_simu ** (-0.133))
+        # station-wise gradient height
+        zg = 450.0 * (z0_simu ** 0.125)
+        # target exposure alpha and graident height
+        if (exposure == 'B'):
+            alpha_t = 7.0
+            zg_t = 365.76
+        elif (exposure == 'D'):
+            alpha_t = 11.5
+            zg_t = 213.36
+        else:
+            # 'C'
+            alpha_t = 9.5
+            zg_t = 274.32
+        # conversion
+        pws = np.zeros(pws_raw.shape)
+        print(np.max(pws_raw))
+        for i in range(len(measure_height)):
+            # computing gradient-height wind speed
+            pws_tmp = pws_raw[:, i] * (zg / measure_height[i]) ** (1.0 / alpha)
+            #print(np.max(pws_tmp))
+            # converting exposure
+            pws_tmp = pws_tmp * (reference_height / zg_t) ** (1.0 / alpha_t)
+            print(np.max(pws_tmp))
+            # coverting gust duration
+            pws[:, i] = pws_tmp * gust_factor_ESDU(gust_duration_simu, gust_duration)
+        # appending to pws_mr
+        pws_mr.append(pws)
 
     print('ComputeIntensityMeasure: wind speed conversion completed.')
     # return
-    return pws
+    return pws_mr
 
 
 def gust_factor_ESDU(gd_c, gd_t):
@@ -363,6 +398,8 @@ def gust_factor_ESDU(gd_c, gd_t):
 
 def export_pws(stations, pws, output_dir, filename = 'EventGrid.csv'):
 
+    print('ComputeIntensityMeasure: saving results.')
+
     # collecting site locations
     lat = []
     lon = []
@@ -381,8 +418,12 @@ def export_pws(stations, pws, output_dir, filename = 'EventGrid.csv'):
     df = pd.DataFrame.from_dict(d)
     df.to_csv(os.path.join(output_dir, filename), index = False)
     for i in range(station_num):
+        pws_op = [pws[0][i, 0]]
+        if len(pws) > 1:
+            for j in range(len(pws) - 1):
+                pws_op.append(pws[j + 1][i, 0])
         d = {
-            'PWS': [pws[i, 0]]    
+            'PWS': pws_op    
         }
         df = pd.DataFrame.from_dict(d)
         df.to_csv(os.path.join(output_dir, csv_file[i]), index = False)
