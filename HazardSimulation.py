@@ -104,7 +104,8 @@ if __name__ == '__main__':
         scenarios = create_earthquake_scenarios(scenario_info, stations)
     elif scenario_info['Type'] == 'Wind':
         # Creating wind scenarios
-        scenarios = create_wind_scenarios(scenario_info, stations, input_dir)
+        event_info = hazard_info['Event']
+        scenarios = create_wind_scenarios(scenario_info, event_info, stations, input_dir)
     else:
         # TODO: extending this to other hazards
         print('HazardSimulation: currently only supports EQ and Wind simulations.')
@@ -137,12 +138,20 @@ if __name__ == '__main__':
         #print(np.exp(ln_psa_mr[0][1, :, 1]))
     elif scenario_info['Type'] == 'Wind':
         if scenario_info['Generator'] == 'Simulation':
-            storm_dir = simulate_storm(scenario_info['AppDir'], input_dir, output_dir)
+            if scenario_info['ModelType'] == 'LinearAnalytical':
+                # simulating storm
+                storm_simu = simulate_storm(scenarios, 'LinearAnalytical')
+                # converting peak wind speed
+                pws = convert_wind_speed(event_info, storm_simu)
+                # saving results
+                _ = export_pws(stations, pws, output_dir, filename = 'EventGrid.csv')
+            else:
+                print('HazardSimulation: currently supporting LinearAnalytical model type.')
         else:
             print('HazardSimulation: currently supporting Wind-Simulation')
     else:
         # TODO: extending this to other hazards
-        print('HazardSimulation currently only supports earthquake simulations.')
+        print('HazardSimulation currently only supports earthquake and wind simulations.')
     print('HazardSimulation: intensity measures computed.')
     # Selecting ground motion records
     if scenario_info['Type'] == 'Earthquake':

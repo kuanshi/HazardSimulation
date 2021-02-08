@@ -126,7 +126,7 @@ def create_earthquake_scenarios(scenario_info, stations):
     return scenario_data
 
 
-def create_wind_scenarios(scenario_info, stations, data_dir):
+def create_wind_scenarios(scenario_info, event_info, stations, data_dir):
 
     # Number of scenarios
     source_num = scenario_info.get('Number', 1)
@@ -138,29 +138,35 @@ def create_wind_scenarios(scenario_info, stations, data_dir):
         for s in stations['Stations']:
             lat.append(s['Latitude'])
             lon.append(s['Longitude'])
-        # Save Stations.csv
-        df = pd.DataFrame({
-            'lat': lat,
-            'lon': lon
-        })
-        df.to_csv(data_dir + 'Stations.csv', index = False, header = False)
+        # Station list
+        station_list = {
+            'Latitude': lat,
+            'Longitude': lon
+        }
+        # Track data
+        try:
+            track_file = scenario_info['Storm'].get('Track')
+            df = pd.read_csv(os.path.join(data_dir, track_file), header = None, index_col = None)
+            track = {
+                'Latitude': df.iloc[:, 0].values.tolist(),
+                'Longitude': df.iloc[:, 1].values.tolist()
+            }
+        except:
+            print('CreateScenario: no storm track provided or file format not accepted.')
         # Save Lat_w.csv
-        lat_w = np.linspace(min(lat) - 0.5, max(lat) + 0.5, 100)
-        df = pd.DataFrame({'lat_w': lat_w})
-        df.to_csv(data_dir + 'Lat_w.csv', index = False, header = False)
-        # Parsing Terrain info
-        df = pd.read_csv(data_dir + scenario_info['Terrain']['Longitude'],
-                         header = None, index_col = None)
-        df.to_csv(data_dir + 'Long_wr.csv', header = False, index = False)
-        df = pd.read_csv(data_dir + scenario_info['Terrain']['Latitude'],
-                         header = None, index_col = None)
-        df.to_csv(data_dir + 'Lat_wr.csv', header = False, index = False)
-        df = pd.read_csv(data_dir + scenario_info['Terrain']['Size'],
-                         header = None, index_col = None)
-        df.to_csv(data_dir + 'wr_sizes.csv', header = False, index = False)
-        df = pd.read_csv(data_dir + scenario_info['Terrain']['z0'],
-                         header = None, index_col = None)
-        df.to_csv(data_dir + 'z0r.csv', header = False, index = False)
+        track_simu_file = scenario_info['Storm'].get('TrackSimu', None)
+        if track_simu_file:         
+            df = pd.read_csv(os.path.join(data_dir, track_simu_file), header = None, index_col = None)
+            track_simu = df.iloc[:, 0].values.tolist()
+        else:
+            track_simu = track['Latitude']
+        # Reading Terrain info (if provided)
+        terrain_file = scenario_info.get('Terrain', None)
+        if terrain_file:
+            with open(os.path.join(data_dir, terrain_file)) as f:
+                terrain_data = json.load(f)
+        else:
+            terrain_data = []
         # Parsing storm properties
         param = []
         param.append(scenario_info['Storm']['Landfall']['Latitude'])
@@ -169,21 +175,27 @@ def create_wind_scenarios(scenario_info, stations, data_dir):
         param.append(scenario_info['Storm']['Pressure'])
         param.append(scenario_info['Storm']['Speed'])
         param.append(scenario_info['Storm']['Radius'])
-        df = pd.DataFrame({'param': param})
-        df.to_csv(data_dir + 'param.csv', index = False, header = False)
-        df = pd.read_csv(data_dir + scenario_info['Storm']['Track'],
-                         header = None, index_col = None)
-        df.to_csv(data_dir + 'Track.csv', header = False, index = False)
-        # Saving del_par.csv
-        del_par = [0, 0, 0] # default
-        df =pd.DataFrame({'del_par': del_par})
-        df.to_csv(data_dir + 'del_par.csv', header = False, index = False)
-        # Parsing resolution data
-        delta_p = [1000., scenario_info['Resolution']['DivRad'], 1000000.]
-        delta_p.extend([0., scenario_info['Resolution']['DivDeg'], 360.])
-        delta_p.extend([scenario_info['MeasureHeight'], 10,
-                       scenario_info['MeasureHeight']])
-        df = pd.DataFrame({'delta_p': delta_p})
-        df.to_csv(data_dir + 'delta_p.csv', header = False, index = False)
+        # Monte-Carlo
+        #del_par = [0, 0, 0] # default
+        # Parsing mesh configurations
+        mesh_info = [1000., scenario_info['Mesh']['DivRad'], 1000000.]
+        mesh_info.extend([0., scenario_info['Mesh']['DivDeg'], 360.])
+        # Wind speed measuring height
+        measure_height = event_info['IntensityMeasure']['MeasureHeight']
+        # Saving results
+        scenario_data = dict()
+        for i in range(source_num):
+            scenario_data.update({i: {
+                'Type': 'Wind',
+                'CycloneParam': param,
+                'StormTrack': track,
+                'StormMesh': mesh_info,
+                'Terrain': terrain_data,
+                'TrackSimu': track_simu,
+                'StationList': station_list,
+                'MeasureHeight': measure_height
+            }})
+        # return
+        return scenario_data
     else:
         print('Currently only supporting Simulation generator.')

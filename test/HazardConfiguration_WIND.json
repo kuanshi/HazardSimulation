@@ -1,0 +1,46 @@
+{
+    "Site": {
+        "Type": "From_CSV",
+        "input_file": "SiteFile.csv",
+        "min_ID": 1,
+        "max_ID": 42987
+    },
+    "Scenario": {
+        "Type": "Wind",
+        "Number": 1,
+        "Generator": "Simulation",
+        "ModelType": "LinearAnalytical",
+        "Terrain": "Terrain.geojson",
+        "Storm": {
+          "Landfall": {
+            "Longitude": -74.452544,
+            "Latitude": 39.248308
+          },
+          "LandingAngle": -40.0,
+          "Pressure": 110.0,
+          "Speed": 90.0,
+          "Radius": 25.0,
+          "Track": "Track.csv",
+          "TrackSimu": "Lat_w.csv"
+        },
+        "Mesh": {
+          "DivRad": 1000.0,
+          "DivDeg": 1.0
+        }
+    },
+    "Event": {
+        "NumberPerSite": 1,
+        "IntensityMeasure": {
+            "Type": "HAZUS-PWS",
+            "MeasureHeight": [10.0, 10.0, 10.0],
+            "ReferenceHeight": 10.0,
+            "GustDuration": 3,
+            "Exposure": "C"
+        }
+    },
+    "Directory":{
+        "Work": "./",
+        "Input": "./test/wind_input/",
+        "Output": "./test/IMs/"
+    }
+}

@@ -44,7 +44,7 @@ import sys
 import json
 import numpy as np
 import pandas as pd
-from gmpe import CorrelationModel
+from gmpe import CorrelationModel, WindFieldSimulation
 from FetchOpenSHA import *
 from tqdm import tqdm
 import time
@@ -52,231 +52,341 @@ import time
 
 def compute_spectra(scenarios, stations, gmpe_info, im_info):
 
-	# Calling OpenSHA to compute median PSA
-	psa_raw = []
-	# Loading ERF model (if exists)
-	erf = None
-	if scenarios[0].get('RuptureForecast', None):
-		erf = getERF(scenarios[0]['RuptureForecast'], True)
-	# Stations
-	station_list = [{
-		'Location': {
-			'Latitude': stations[j]['Latitude'],
-			'Longitude': stations[j]['Longitude']
-		}
-	} for j in range(len(stations))]
-	for j in range(len(stations)):
-		if stations[j].get('Vs30'):
-			station_list[j].update({'Vs30': int(stations[j]['Vs30'])})
-	station_info = {'Type': 'SiteList',
-					'SiteList': station_list}
-	# Configuring site properties
-	siteSpec, sites, site_prop = get_site_prop(gmpe_info['Type'], station_list)
-	# Loop over scenarios
-	for i, s in enumerate(tqdm(scenarios, desc='Scenarios')):
-		# Rupture
-		source_info = scenarios[i]
-		# Computing IM
-		res, station_info = get_IM(gmpe_info, erf, sites, siteSpec, site_prop, source_info, station_info, im_info)
-		# Collecting outputs
-		psa_raw.append(res)
+    # Calling OpenSHA to compute median PSA
+    psa_raw = []
+    # Loading ERF model (if exists)
+    erf = None
+    if scenarios[0].get('RuptureForecast', None):
+        erf = getERF(scenarios[0]['RuptureForecast'], True)
+    # Stations
+    station_list = [{
+        'Location': {
+            'Latitude': stations[j]['Latitude'],
+            'Longitude': stations[j]['Longitude']
+        }
+    } for j in range(len(stations))]
+    for j in range(len(stations)):
+        if stations[j].get('Vs30'):
+            station_list[j].update({'Vs30': int(stations[j]['Vs30'])})
+    station_info = {'Type': 'SiteList',
+                    'SiteList': station_list}
+    # Configuring site properties
+    siteSpec, sites, site_prop = get_site_prop(gmpe_info['Type'], station_list)
+    # Loop over scenarios
+    for i, s in enumerate(tqdm(scenarios, desc='Scenarios')):
+        # Rupture
+        source_info = scenarios[i]
+        # Computing IM
+        res, station_info = get_IM(gmpe_info, erf, sites, siteSpec, site_prop, source_info, station_info, im_info)
+        # Collecting outputs
+        psa_raw.append(res)
 
-	# Collecting station_info updates to staitons
-	for j in range(len(stations)):
-		stations[j]['Latitude'] = station_info['SiteList'][j]['Location']['Latitude']
-		stations[j]['Longitude'] = station_info['SiteList'][j]['Location']['Longitude']
-		stations[j]['Vs30'] = station_info['SiteList'][j]['Vs30']
-	# return
-	return psa_raw, stations
+    # Collecting station_info updates to staitons
+    for j in range(len(stations)):
+        stations[j]['Latitude'] = station_info['SiteList'][j]['Location']['Latitude']
+        stations[j]['Longitude'] = station_info['SiteList'][j]['Location']['Longitude']
+        stations[j]['Vs30'] = station_info['SiteList'][j]['Vs30']
+    # return
+    return psa_raw, stations
 
 
 def compute_inter_event_residual(sa_inter_cm, periods, num_simu):
 
-	num_periods = len(periods)
-	if sa_inter_cm == 'Baker & Jayaram (2008)':
-		rho = np.array([CorrelationModel.baker_jayaram_correlation_2008(T1, T2)
-		                for T1 in periods for T2 in periods]).reshape([num_periods, num_periods])
-	else:
-		# TODO: extending this to more inter-event correlation models
-		print('ComputeIntensityMeaure: currently only supporting Baker & Jayaram (2008)')
+    num_periods = len(periods)
+    if sa_inter_cm == 'Baker & Jayaram (2008)':
+        rho = np.array([CorrelationModel.baker_jayaram_correlation_2008(T1, T2)
+                        for T1 in periods for T2 in periods]).reshape([num_periods, num_periods])
+    else:
+        # TODO: extending this to more inter-event correlation models
+        print('ComputeIntensityMeaure: currently only supporting Baker & Jayaram (2008)')
 
-	# Simulating residuals
-	residuals = np.random.multivariate_normal(np.zeros(num_periods), rho, num_simu).T
-	# return
-	return residuals
+    # Simulating residuals
+    residuals = np.random.multivariate_normal(np.zeros(num_periods), rho, num_simu).T
+    # return
+    return residuals
 
 
 def compute_intra_event_residual(sa_intra_cm, periods, station_data, num_simu):
 
-	# Computing correlation coefficients
-	num_stations = len(station_data)
-	num_periods = len(periods)
-	if sa_intra_cm == 'Jayaram & Baker (2009)':
-	    rho = np.zeros((num_stations, num_stations, num_periods))
-	    for i in range(num_stations):
-		    loc_i = np.array([station_data[i]['Latitude'],
-			                  station_data[i]['Longitude']])
-		    for j in range(num_stations):
-			    loc_j = np.array([station_data[j]['Latitude'],
-				                  station_data[j]['Longitude']])
-			    # Computing station-wise distances
-			    stn_dist = np.linalg.norm(loc_i - loc_j) * 111.0
-			    for k in range(num_periods):
-			        rho[i, j, k] = \
-					    CorrelationModel.jayaram_baker_correlation_2009(periods[k],
-						    stn_dist, flag_clustering = False)
+    # Computing correlation coefficients
+    num_stations = len(station_data)
+    num_periods = len(periods)
+    if sa_intra_cm == 'Jayaram & Baker (2009)':
+        rho = np.zeros((num_stations, num_stations, num_periods))
+        for i in range(num_stations):
+            loc_i = np.array([station_data[i]['Latitude'],
+                              station_data[i]['Longitude']])
+            for j in range(num_stations):
+                loc_j = np.array([station_data[j]['Latitude'],
+                                  station_data[j]['Longitude']])
+                # Computing station-wise distances
+                stn_dist = np.linalg.norm(loc_i - loc_j) * 111.0
+                for k in range(num_periods):
+                    rho[i, j, k] = \
+                        CorrelationModel.jayaram_baker_correlation_2009(periods[k],
+                            stn_dist, flag_clustering = False)
         # Simulating residuals
-	    residuals = np.zeros((num_stations, num_periods, num_simu))
-	    for k in range(num_periods):
-		    residuals[:, k, :] = np.random.multivariate_normal(np.zeros(num_stations),
-			                                                   rho[:, :, k], num_simu).T
-	elif sa_intra_cm == 'Loth & Baker (2013)':
-		residuals = CorrelationModel.loth_baker_correlation_2013(station_data, periods, num_simu)
+        residuals = np.zeros((num_stations, num_periods, num_simu))
+        for k in range(num_periods):
+            residuals[:, k, :] = np.random.multivariate_normal(np.zeros(num_stations),
+                                                               rho[:, :, k], num_simu).T
+    elif sa_intra_cm == 'Loth & Baker (2013)':
+        residuals = CorrelationModel.loth_baker_correlation_2013(station_data, periods, num_simu)
 
-	elif sa_intra_cm == 'Markhvida et al. (2017)':
-		num_pc = 19
-		residuals = CorrelationModel.markhvida_ceferino_baker_correlation_2017(station_data, periods, num_simu, num_pc)
+    elif sa_intra_cm == 'Markhvida et al. (2017)':
+        num_pc = 19
+        residuals = CorrelationModel.markhvida_ceferino_baker_correlation_2017(station_data, periods, num_simu, num_pc)
 
     # return
-	return residuals
+    return residuals
 
 
 def export_im(stations, T, im_data, eq_data, output_dir, filename):
 
-	#try:
-	    # Station number
-		num_stations = len(stations)
-		# Scenario number
-		num_scenarios = len(eq_data)
-		# Saving large files to HDF while small files to JSON
-		if num_scenarios > 10:
-			# Pandas DataFrame
-			h_scenarios = ['Scenario-'+str(x) for x in range(1, num_scenarios + 1)]
-			h_eq = ['Latitude', 'Longitude', 'Vs30', 'Magnitude', 'MeanAnnualRate']
-			for x in range(len(T)):
-				h_eq.append('Period-{0}'.format(x+1))
-			for x in range(1, im_data[0][0, :, :].shape[1]+1):
-				for y in T:
-					h_eq.append('Record-'+str(x)+'-lnSa-{0}s'.format(y))
-			index = pd.MultiIndex.from_product([h_scenarios, h_eq])
-			columns = ['Site-'+str(x) for x in range(1, num_stations + 1)]
-			df = pd.DataFrame(index=index, columns=columns, dtype=float)
-			# Data
-			for i in range(num_stations):
-				tmp = []
-				for j in range(num_scenarios):
-					tmp.append(stations[i]['Latitude'])
-					tmp.append(stations[i]['Longitude'])
-					tmp.append(int(stations[i]['Vs30']))
-					tmp.append(eq_data[j][0])
-					tmp.append(eq_data[j][1])
-					for x in T:
-						tmp.append(x)
-					for x in np.ndarray.tolist(im_data[j][i, :, :].T):
-						for y in x:
-							tmp.append(y)
-				df['Site-'+str(i+1)] = tmp
-			# HDF output
-			try:
-				os.remove(os.path.join(output_dir, filename.replace('.json', '.h5')))
-			except:
-				pass
-			hdf = pd.HDFStore(os.path.join(output_dir, filename.replace('.json', '.h5')))
-			hdf.put('SiteIM', df, format='table', complib='zlib')
-			hdf.close()
-		else:
-			res = []
-			for i in range(num_stations):
-				tmp = {'Location': {
-				           'Latitude': stations[i]['Latitude'],
-					       'Longitude': stations[i]['Longitude']
-						   },
-					   'Vs30': int(stations[i]['Vs30'])
-					  }
-				tmp.update({'Periods': T})
-				tmp_im = []
-				for j in range(num_scenarios):
-					tmp_im.append(np.ndarray.tolist(im_data[j][i, :, :]))
-				if len(tmp_im) == 1:
-					# Simplifying the data structure if only one scenario exists
-					tmp_im = tmp_im[0]
-				tmp.update({'lnSa': tmp_im})
-				res.append(tmp)
-			maf_out = []
-			for cur_eq in eq_data:
-				tmp = {'Magnitdue': cur_eq[0],
-				       'MeanAnnualRate': cur_eq[1]}
-				maf_out.append(tmp)
-			res = {'Station_lnSa': res,
-			       'Earthquake_MAF': maf_out}
-			# save
-			with open(os.path.join(output_dir, filename), "w") as f:
-				json.dump(res, f, indent=2)
-		# return
-		return 0
-	#except:
-		# return
-		#return 1
+    #try:
+        # Station number
+        num_stations = len(stations)
+        # Scenario number
+        num_scenarios = len(eq_data)
+        # Saving large files to HDF while small files to JSON
+        if num_scenarios > 10:
+            # Pandas DataFrame
+            h_scenarios = ['Scenario-'+str(x) for x in range(1, num_scenarios + 1)]
+            h_eq = ['Latitude', 'Longitude', 'Vs30', 'Magnitude', 'MeanAnnualRate']
+            for x in range(len(T)):
+                h_eq.append('Period-{0}'.format(x+1))
+            for x in range(1, im_data[0][0, :, :].shape[1]+1):
+                for y in T:
+                    h_eq.append('Record-'+str(x)+'-lnSa-{0}s'.format(y))
+            index = pd.MultiIndex.from_product([h_scenarios, h_eq])
+            columns = ['Site-'+str(x) for x in range(1, num_stations + 1)]
+            df = pd.DataFrame(index=index, columns=columns, dtype=float)
+            # Data
+            for i in range(num_stations):
+                tmp = []
+                for j in range(num_scenarios):
+                    tmp.append(stations[i]['Latitude'])
+                    tmp.append(stations[i]['Longitude'])
+                    tmp.append(int(stations[i]['Vs30']))
+                    tmp.append(eq_data[j][0])
+                    tmp.append(eq_data[j][1])
+                    for x in T:
+                        tmp.append(x)
+                    for x in np.ndarray.tolist(im_data[j][i, :, :].T):
+                        for y in x:
+                            tmp.append(y)
+                df['Site-'+str(i+1)] = tmp
+            # HDF output
+            try:
+                os.remove(os.path.join(output_dir, filename.replace('.json', '.h5')))
+            except:
+                pass
+            hdf = pd.HDFStore(os.path.join(output_dir, filename.replace('.json', '.h5')))
+            hdf.put('SiteIM', df, format='table', complib='zlib')
+            hdf.close()
+        else:
+            res = []
+            for i in range(num_stations):
+                tmp = {'Location': {
+                           'Latitude': stations[i]['Latitude'],
+                           'Longitude': stations[i]['Longitude']
+                           },
+                       'Vs30': int(stations[i]['Vs30'])
+                      }
+                tmp.update({'Periods': T})
+                tmp_im = []
+                for j in range(num_scenarios):
+                    tmp_im.append(np.ndarray.tolist(im_data[j][i, :, :]))
+                if len(tmp_im) == 1:
+                    # Simplifying the data structure if only one scenario exists
+                    tmp_im = tmp_im[0]
+                tmp.update({'lnSa': tmp_im})
+                res.append(tmp)
+            maf_out = []
+            for cur_eq in eq_data:
+                tmp = {'Magnitdue': cur_eq[0],
+                       'MeanAnnualRate': cur_eq[1]}
+                maf_out.append(tmp)
+            res = {'Station_lnSa': res,
+                   'Earthquake_MAF': maf_out}
+            # save
+            with open(os.path.join(output_dir, filename), "w") as f:
+                json.dump(res, f, indent=2)
+        # return
+        return 0
+    #except:
+        # return
+        #return 1
 
 
 def simulate_ground_motion(stations, psa_raw, num_simu, correlation_info):
 
     # Sa inter-event model
-	sa_inter_cm = correlation_info['SaInterEvent']
-	# Sa intra-event model
-	sa_intra_cm = correlation_info['SaIntraEvent']
-	# Periods
-	periods = psa_raw[0]['Periods']
-	# Computing inter event residuals
-	t_start = time.time()
-	epsilon = compute_inter_event_residual(sa_inter_cm, periods, num_simu)
-	print('ComputeIntensityMeasure: inter-event correlation {0} sec'.format(time.time() - t_start))
-	# Computing intra event residuals
-	t_start = time.time()
-	eta = compute_intra_event_residual(sa_intra_cm, periods, stations, num_simu)
-	print('ComputeIntensityMeasure: intra-event correlation {0} sec'.format(time.time() - t_start))
-	ln_psa_mr = []
-	mag_maf = []
-	for cur_psa_raw in tqdm(psa_raw, desc='Scenarios'):
-		# Spectral data (median and dispersions)
-		sa_data = cur_psa_raw['GroundMotions']
-	    # Combining inter- and intra-event residuals
-		ln_sa = [sa_data[i]['lnSA']['Mean'] for i in range(len(sa_data))]
-		inter_sigma_sa = [sa_data[i]['lnSA']['InterEvStdDev'] for i in range(len(sa_data))]
-		intra_sigma_sa = [sa_data[i]['lnSA']['IntraEvStdDev'] for i in range(len(sa_data))]
-		ln_psa = np.zeros((len(sa_data), len(periods), num_simu))
-		for i in range(num_simu):
-			epsilon_m = np.array([epsilon[:, i] for j in range(len(sa_data))])
-			ln_psa[:, :, i] = ln_sa + inter_sigma_sa * epsilon_m + intra_sigma_sa * eta[:, :, i]
+    sa_inter_cm = correlation_info['SaInterEvent']
+    # Sa intra-event model
+    sa_intra_cm = correlation_info['SaIntraEvent']
+    # Periods
+    periods = psa_raw[0]['Periods']
+    # Computing inter event residuals
+    t_start = time.time()
+    epsilon = compute_inter_event_residual(sa_inter_cm, periods, num_simu)
+    print('ComputeIntensityMeasure: inter-event correlation {0} sec'.format(time.time() - t_start))
+    # Computing intra event residuals
+    t_start = time.time()
+    eta = compute_intra_event_residual(sa_intra_cm, periods, stations, num_simu)
+    print('ComputeIntensityMeasure: intra-event correlation {0} sec'.format(time.time() - t_start))
+    ln_psa_mr = []
+    mag_maf = []
+    for cur_psa_raw in tqdm(psa_raw, desc='Scenarios'):
+        # Spectral data (median and dispersions)
+        sa_data = cur_psa_raw['GroundMotions']
+        # Combining inter- and intra-event residuals
+        ln_sa = [sa_data[i]['lnSA']['Mean'] for i in range(len(sa_data))]
+        inter_sigma_sa = [sa_data[i]['lnSA']['InterEvStdDev'] for i in range(len(sa_data))]
+        intra_sigma_sa = [sa_data[i]['lnSA']['IntraEvStdDev'] for i in range(len(sa_data))]
+        ln_psa = np.zeros((len(sa_data), len(periods), num_simu))
+        for i in range(num_simu):
+            epsilon_m = np.array([epsilon[:, i] for j in range(len(sa_data))])
+            ln_psa[:, :, i] = ln_sa + inter_sigma_sa * epsilon_m + intra_sigma_sa * eta[:, :, i]
 
-		ln_psa_mr.append(ln_psa)
-		mag_maf.append([cur_psa_raw['Magnitude'], cur_psa_raw['MeanAnnualRate']])
+        ln_psa_mr.append(ln_psa)
+        mag_maf.append([cur_psa_raw['Magnitude'], cur_psa_raw['MeanAnnualRate']])
     # return
-	return ln_psa_mr, mag_maf
+    return ln_psa_mr, mag_maf
 
 
-def simulate_storm(app_dir, input_dir, output_dir):
+def simulate_storm(scenarios, model_type):
 
-	file_list = os.listdir(app_dir)
-	if sys.platform.startswith('win'):
-		if any([i.endswith('exe') for i in file_list]):
-			app = file_list[[i.endswith('exe') for i in file_list].index(True)]
-		else:
-			print('ComputeIntensityMeasure: please check the app for wind simulation.')
-	elif sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
-		if any([i.startswith('WindApp') for i in file_list]):
-			app = file_list[[i.startswith('WindApp') for i in file_list].index(True)]
-		else:
-			print('ComputeIntensityMeasure: please check the app for wind simulation.')
-	else:
-		print('ComputeIntensityMeasure: system error.')
-	try:
-		os.mkdir(output_dir)
-	except:
-		print('ComputeIntensityMeasure: output directory already exists.')
+    if (model_type == 'LinearAnalytical'):
+        for i in range(len(scenarios)):
+            cur_scen = scenarios[i]
+            param = cur_scen['CycloneParam']
+            track = cur_scen['StormTrack']
+            model = WindFieldSimulation.LinearAnalyticalModel_SnaikiWu_2017(cyclone_param = param, storm_track = track)
+            if cur_scen['Terrain']:
+                model.add_reference_terrain(cur_scen['Terrain'])
+            model.set_cyclone_mesh(cur_scen['StormMesh'])
+            model.set_measure_height(cur_scen['MeasureHeight'])
+            model.define_track(cur_scen['TrackSimu'])
+            model.add_stations(cur_scen['StationList'])
+            model.compute_wind_field()
+            res = model.get_station_data()
+    else:
+        print('ComputeIntensityMeasure: currently only supporting LinearAnalytical model')
 
-	print([app_dir + app, '--input_dir', input_dir, '--output_dir', output_dir])
-	_ = subprocess.call([app_dir + app, '--input_dir', input_dir,
-	                     '--output_dir', output_dir])
+    # return
+    return res
 
-	return output_dir
+
+def convert_wind_speed(event_info, simu_res):
+
+    print('ComputeIntensityMeasure: converting peak wind speed to specificed exposure, measuring height, and gust duration.')
+
+    if ('HAZUS' in event_info['IntensityMeasure']['Type']):
+        # Exposure type C: z0 = 0.03
+        exposure = 'C'
+        # 10-m measuring height
+        reference_height = 10.0
+        # 3-s gust duration
+        gust_duration = 3.0
+    else:
+        exposure = event_info['IntensityMeasure']['Exposure']
+        if exposure not in ['A', 'B', 'C', 'D']:
+            print('ComputeIntensityMeasure: the Exposure should be A, B, C, or D.')
+            return -1
+        gust_duration = event_info['IntensityMeasure']['GustDuration']
+        reference_height = event_info['IntensityMeasure']['ReferenceHeight']
+    # Reading simulation heights
+    measure_height = simu_res['PWS']['height']
+    # Reading simulated wind speed
+    pws_raw = np.array(simu_res['PWS']['windspeed'])
+    # Reading z0 in the simulation
+    z0_simu = np.array(simu_res['z0'])
+    # Reading gust duration in the simulation
+    gust_duration_simu = simu_res['PWS']['duration']
+    # quick check the size
+    if pws_raw.shape[1] != len(measure_height):
+        print('ComputeIntensityMeasure: please check the output wind speed results.')
+        return -1
+    # ASCE 7-16 conversion (Chapter C26)
+    # station-wise empirical exponent \alpha
+    alpha = 5.65 * (z0_simu ** (-0.133))
+    # station-wise gradient height
+    zg = 450.0 * (z0_simu ** 0.125)
+    # target exposure alpha and graident height
+    if (exposure == 'B'):
+        alpha_t = 7.0
+        zg_t = 365.76
+    elif (exposure == 'D'):
+        alpha_t = 11.5
+        zg_t = 213.36
+    else:
+        # 'C'
+        alpha_t = 9.5
+        zg_t = 274.32
+    # conversion
+    pws = np.zeros(pws_raw.shape)
+    print(np.max(pws_raw))
+    for i in range(len(measure_height)):
+        # computing gradient-height wind speed
+        pws_tmp = pws_raw[:, i] * (zg / measure_height[i]) ** (1.0 / alpha)
+        print(np.max(pws_tmp))
+        # converting exposure
+        pws_tmp = pws_tmp * (reference_height / zg_t) ** (1.0 / alpha_t)
+        print(np.max(pws_tmp))
+        # coverting gust duration
+        pws[:, i] = pws_tmp * gust_factor_ESDU(gust_duration_simu, gust_duration)
+
+    print('ComputeIntensityMeasure: wind speed conversion completed.')
+    # return
+    return pws
+
+
+def gust_factor_ESDU(gd_c, gd_t):
+    """
+    gust_factor_ESDU: return a gust facto between gd_c and gd_t
+    """
+    # gust duration (sec)
+    gd = [1.0, 2.0, 5.0, 10.0, 20.0, 
+        50.0, 100.0, 200.0, 500.0, 1000.0, 
+        2000.0, 3600.0]
+    # gust factor w.r.t. 3600 sec
+    gf = [1.59, 1.55, 1.47, 1.40, 1.32, 
+        1.20, 1.15, 1.10, 1.055, 1.045, 
+        1.02, 1.00]
+    # interpolation
+    gf_t = np.interp(gd_t, gd, gf, left = gf[0], right = gf[-1]) \
+        / np.interp(gd_c, gd, gf, left = gf[0], right = gf[-1])
+    # return
+    return gf_t
+
+
+def export_pws(stations, pws, output_dir, filename = 'EventGrid.csv'):
+
+    # collecting site locations
+    lat = []
+    lon = []
+    for s in stations['Stations']:
+        lat.append(s['Latitude'])
+        lon.append(s['Longitude'])
+
+    # saving data
+    station_num = len(lat)
+    csv_file = [str(x + 1)+'.csv' for x in range(station_num)]
+    d = {
+        'Station': csv_file,
+        'Latitude': lat,
+        'Longitude': lon
+    }
+    df = pd.DataFrame.from_dict(d)
+    df.to_csv(os.path.join(output_dir, filename), index = False)
+    for i in range(station_num):
+        d = {
+            'PWS': [pws[i, 0]]    
+        }
+        df = pd.DataFrame.from_dict(d)
+        df.to_csv(os.path.join(output_dir, csv_file[i]), index = False)
+
+    print('ComputeIntensityMeasure: simulated wind speed field saved.')
+        
+
