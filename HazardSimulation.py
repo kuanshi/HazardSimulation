@@ -41,7 +41,7 @@
 import os
 import sys
 import subprocess
-packages = ['JPype1', 'selenium', 'tqdm']
+packages = ['JPype1', 'selenium', 'tqdm', 'shapely']
 for p in packages:
     subprocess.check_call([sys.executable, "-m", "pip", "install", p])
 import argparse, posixpath, json
