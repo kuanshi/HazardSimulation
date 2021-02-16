@@ -198,7 +198,7 @@ int WindFieldModel::ConfigSimu(std::string config_file, std::string stn_file,
         value = 0;
         for (int jj = 0; jj < this->Lat_track.size() - 1; jj++)
         {
-            if ((this->Lat_w(ii) > this->Lat_track(jj)) && (this->Lat_w(ii) < this->Lat_track(jj + 1)))
+            if ((this->Lat_w(ii) >= this->Lat_track(jj)) && (this->Lat_w(ii) < this->Lat_track(jj + 1)))
             {
                 value = jj;
                 break;
@@ -231,11 +231,11 @@ int WindFieldModel::PertubPath(std::string dpath_file)
     dpath_doc.ParseStream(isw);
 
     // \delta Anlge
-    this->del_par(0) = dpath_doc["dAngle"].GetDouble();
+    this->del_par(2) = dpath_doc["dAngle"].GetDouble();
     // \delta Latitude
-    this->del_par(1) = dpath_doc["dLatitude"].GetDouble();
+    this->del_par(0) = dpath_doc["dLatitude"].GetDouble();
     // \delta Longitude
-    this->del_par(2) = dpath_doc["dLongitude"].GetDouble();
+    this->del_par(1) = dpath_doc["dLongitude"].GetDouble();
     // \delta Pressure
     this->dP = dpath_doc["dP"].GetDouble();
     // \delta Speed
@@ -325,11 +325,10 @@ int WindFieldModel::ComputeStationZ0(std::string dirOutput)
 
 int WindFieldModel::SimulateWind(std::string dirOutput)
 {
-    // debug
+    /* debug
     std::vector<double> dbg_Lat_w, dbg_Long_w;
     std::vector<double> dbg_Lat_wout, dbg_Long_wout;
-    Eigen::MatrixXd dbg_Lat_wr = this->Lat_wr;
-    Eigen::MatrixXd dbg_Long_wr = this->Long_wr;
+    */
 
     // central pressure difference
     double del_p = (this->param(3) + this->dP) * 100.0;
@@ -366,6 +365,14 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
         }
     }
     beta_c(this->Lat_w.size() - 1) = beta_c(this->Lat_w.size() - 2);
+
+    /* debug
+    std::vector<double> dbg_beta_c;
+    for (int tag = 0; tag < beta_c.size(); tag++)
+    {
+        dbg_beta_c.push_back(beta_c(tag));
+    }
+    */
 
     // Calculate r - theta - zp
     int size = 1 + (this->delta_p(2) - this->delta_p(0)) / this->delta_p(1);
@@ -425,6 +432,15 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
         dd = dd * temp100;
         Eigen::ArrayXd Delta2 = abs(this->Long_wout) - Long + pow(eps, 2);
 
+        /* debug
+        std::vector<double> dbg_dd, dbg_Delta2;
+        for (int tag = 0; tag < dd.size(); tag++)
+        {
+            dbg_dd.push_back(dd(tag));
+            dbg_Delta2.push_back(Delta2(tag));
+        }
+        */
+
         // Bearing angle in degrees
         Eigen::ArrayXd bearing = Eigen::ArrayXd::Zero(this->Lat_wout.size());
         Eigen::ArrayXd jvar = Eigen::ArrayXd::Zero(this->Lat_wout.size());
@@ -443,6 +459,22 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
 
         jvar2.col(ii) = jvar;
         kvar2.col(ii) = kvar;
+
+        /* debug
+        std::vector<double> dbg_Long_w, dbg_Lat_w;
+        for (int tag = 0; tag < this->Long_w.size(); tag ++)
+        {
+            dbg_Long_w.push_back(this->Long_w(tag));
+            dbg_Lat_w.push_back(this->Lat_w(tag));
+        }
+        std::vector<double> dbg_bearing, dbg_jvar, dbg_kvar;
+        for (int tag = 0; tag < bearing.size(); tag++)
+        {
+            dbg_bearing.push_back(bearing(tag));
+            dbg_jvar.push_back(jvar(tag));
+            dbg_kvar.push_back(kvar(tag));
+        }
+        */
 
         // Calculate wind field model, for loop for different polar coordinates
         // theta in for loop and r element-wise
@@ -527,6 +559,16 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
             Eigen::ArrayXd XXX = -(ALPHA * BETA).pow(0.25);
             Eigen::ArrayXd YYY = -(ALPHA * BETA).pow(0.25);
 
+            /* debug
+            std::vector<double> dbg_ALPHA, dbg_BETA, dbg_GAMMA;
+            for (int tag = 0; tag < ALPHA.size(); tag++)
+            {
+                dbg_ALPHA.push_back(ALPHA(tag));
+                dbg_BETA.push_back(BETA(tag));
+                dbg_GAMMA.push_back(GAMMA(tag));
+            }
+            */
+
             Eigen::ArrayXcd PP_zero = Eigen::ArrayXcd::Zero(XXX.size());
             Eigen::ArrayXcd PP_one = Eigen::ArrayXcd::Zero(XXX.size());
             Eigen::ArrayXcd PP_minus_one = Eigen::ArrayXcd::Zero(XXX.size());
@@ -550,6 +592,17 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
             Eigen::ArrayXcd X4 = -(-PP_zero - (f / (2.0 * k_m)) * r * Cd + (Eta / k_m) * Cd) *
                                  (-PP_zero.conjugate() - (f / (2.0 * k_m)) * r * Cd + (Eta / k_m) * Cd).inverse();
 
+            /* debug
+            std::vector<std::complex<double>> dbg_X1, dbg_X2, dbg_X3, dbg_X4;
+            for (int tag = 0; tag < X1.size(); tag++)
+            {
+                dbg_X1.push_back(X1(tag));
+                dbg_X2.push_back(X2(tag));
+                dbg_X3.push_back(X3(tag));
+                dbg_X4.push_back(X4(tag));
+            }
+            */
+
             Eigen::ArrayXcd A_zero = -X3 * ((X1 + (X2 * X4)).inverse());
             std::complex<double> temvar1(0, 1);
             std::complex<double> temvar2(0, -beta);
@@ -565,14 +618,36 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
                 Eigen::ArrayXd v_zero = (A_zero * exp(PP_zero * zp(kk))).imag();
 
                 Eigen::ArrayXd u_one = sqrt(ALPHA * inverse(BETA)) * (A_one * exp(PP_one * zp(kk) + temvar1 * theta(jj) * (PI / 180.0))).real();
-                Eigen::ArrayXd v_one = (A_one * exp(PP_one * zp(kk) - temvar1 * theta(jj) * (PI / 180.0))).imag();
+                Eigen::ArrayXd v_one = (A_one * exp(PP_one * zp(kk) + temvar1 * theta(jj) * (PI / 180.0))).imag();
                 Eigen::ArrayXd u_minus_one = sqrt(ALPHA * inverse(BETA)) * (A_minus_one * exp(PP_minus_one * zp(kk) 
                     - temvar1 * theta(jj) * (PI / 180.0))).real();
                 Eigen::ArrayXd v_minus_one = (A_minus_one * exp(PP_minus_one * zp(kk) - temvar1 * theta(jj) * (PI / 180.0))).imag();
 
+                /* debug
+                std::vector<double> dbg_u_zero, dbg_u_one, dbg_u_minus_one, dbg_v_zero, dbg_v_one, dbg_v_minus_one;
+                for (int tag = 0; tag < X1.size(); tag++)
+                {
+                    dbg_u_zero.push_back(u_zero(tag));
+                    dbg_u_one.push_back(u_one(tag));
+                    dbg_u_minus_one.push_back(u_minus_one(tag));
+                    dbg_v_zero.push_back(v_zero(tag));
+                    dbg_v_one.push_back(v_one(tag));
+                    dbg_v_minus_one.push_back(v_minus_one(tag));
+                }
+                */
+
                 u_tmp.row(kk) = u_zero + u_one + u_minus_one;
                 v_tmp.row(kk) = v_zero + v_one + v_minus_one;
             }
+
+            /* debug
+            std::vector<double> dbg_u_tmp, dbg_v_tmp;
+            for (int tag = 0; tag < u_tmp.size(); tag++)
+            {
+                dbg_u_tmp.push_back(u_tmp(tag));
+                dbg_v_tmp.push_back(v_tmp(tag));
+            }
+            */
 
             // Saving u_tmp and v_tmp to u and v
             for (int pp = 0; pp < r.size(); pp++)
@@ -600,6 +675,15 @@ int WindFieldModel::SimulateWind(std::string dirOutput)
                 Wind_speed(mm) = Uvel(kvar(mm) - 1, jvar(mm) - 1);
                 u_max_tmp(mm) = std::max(u_max(mm), Wind_speed(mm));
             }
+
+            /* debug
+            std::vector<double> dbg_u_max_tmp;
+            for (int tag = 0; tag < u_max_tmp.size(); tag++)
+            {
+                dbg_u_max_tmp.push_back(u_max_tmp(tag));
+            }
+            */
+
             u_max.col(pp) = u_max_tmp;
         }
     }
