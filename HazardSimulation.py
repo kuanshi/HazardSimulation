@@ -140,7 +140,9 @@ if __name__ == '__main__':
         if scenario_info['Generator'] == 'Simulation':
             if scenario_info['ModelType'] == 'LinearAnalytical':
                 # simulating storm
-                storm_simu = simulate_storm(scenarios, event_info, 'LinearAnalytical')
+                # storm_simu = simulate_storm(scenarios, event_info, 'LinearAnalytical')
+                # simulation storm (c++ binary)
+                storm_simu = simulate_storm_cpp(site_info, scenario_info, event_info, 'LinearAnalytical', dir_info)
                 # converting peak wind speed
                 pws = convert_wind_speed(event_info, storm_simu)
                 # saving results

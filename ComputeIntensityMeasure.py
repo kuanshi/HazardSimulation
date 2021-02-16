@@ -307,6 +307,93 @@ def simulate_storm(scenarios, event_info, model_type):
     return res
 
 
+def simulate_storm_cpp(site_info, scenario_info, event_info, model_type, dir_info):
+
+    if (model_type == 'LinearAnalytical'):
+        # save configuration file
+        input_dir = dir_info['Input']
+        output_dir = dir_info['Output']
+        config = {
+            "Scenario": scenario_info,
+            "Event": event_info
+        }
+        abs_path_config = os.path.abspath(os.path.join(input_dir, 'SimuConfig.json'))
+        with open (abs_path_config, "w") as f:
+            json.dump(config, f)
+        # site file
+        abs_path_site = os.path.abspath(os.path.join(input_dir, site_info['input_file']))
+        # track file
+        abs_path_track = os.path.abspath(os.path.join(input_dir, scenario_info['Storm']['Track']))
+        # lat_w file
+        abs_path_latw = os.path.abspath(os.path.join(input_dir, scenario_info['Storm']['TrackSimu']))
+        # terrain file
+        abs_path_terrain = os.path.abspath(os.path.join(input_dir, scenario_info['Terrain']))
+        # configuring perturbation
+        num_per_site = event_info['NumberPerSite']
+        if (num_per_site == 1):
+            path_perturb = np.zeros(3)
+            feat_perturb = np.zeros(3)
+        else:
+            if (len(event_info.get('Perturbation', [])) != 6): 
+                print('ComputeIntensityMeasure: Perturbation should have a size of 6.')
+                path_perturb = np.array([0.5, 0.5, 90.0])
+                feat_perturb = np.array([10.0, 10.0, 10.0])
+                print('ComputeIntensityMeasure: [1.0, 1.0, 90.0, 10.0, 10.0, 10.0] is used for perturbations.')
+            else:
+                path_perturb = np.array(event_info['Perturbation'][0:3])
+                feat_perturb = np.array(event_info['Perturbation'][3:6])
+        for i in range(int(scenario_info['Number'])):
+            if (i == 1):
+                print('ComputeIntensityMeasure: currently supporting single scenario simulation only.')
+                return -1
+            np.random.seed(100)
+            res = []
+            for j in range(num_per_site):
+                delta_path = (np.random.rand(3) - 0.5) * path_perturb
+                delta_feat = (np.random.rand(3) - 0.5) * feat_perturb
+                pert_dict = {
+                    "dLatitude": delta_path[0],
+                    "dLongitude": delta_path[1],
+                    "dAngle": delta_path[2],
+                    "dP": delta_feat[0],
+                    "dV": delta_feat[1],
+                    "dR": delta_feat[2]
+                }
+                abs_path_pert = os.path.abspath(os.path.join(input_dir, 'Perturbation.json'))
+                with open(abs_path_pert, "w") as f:
+                    json.dump(pert_dict, f)
+                print('dLatitude, dLongtitude, dAngle = ', delta_path)
+                print('dP, dv, dR = ', delta_feat)
+                windsimu_bin = os.path.dirname(__file__) + '/bin/windmodel/WindFieldModel.exe'
+                args = [windsimu_bin, "--config", abs_path_config, "--site", abs_path_site, 
+                    "--track", abs_path_track, "--latw", abs_path_latw, "--pert", abs_path_pert,
+                    "--terrain", abs_path_terrain, "--z0", os.path.abspath(output_dir), 
+                    "--output", os.path.abspath(output_dir)]
+                subprocess.run(args)
+                station_res = {
+                    'Latitude': [],
+                    'Longitude': [],
+                    'z0': [],
+                    'PWS': {
+                        'height': [],
+                        'duration': 600.0,
+                        'windspeed': []
+                    }
+                }
+                df = pd.read_csv(os.path.join(os.path.abspath(output_dir), 'StationZ0.csv'), header = None, index_col = None)
+                station_res['z0'] = df.values.tolist()
+                df = pd.read_csv(os.path.join(os.path.abspath(output_dir), 'MeasureHeight.csv'), header = None, index_col = None)
+                station_res['PWS']['height'] = df.values.tolist()[0]
+                df = pd.read_csv(os.path.join(os.path.abspath(output_dir), 'MaxWindSpeed.csv'), header = None, index_col = None)
+                station_res['PWS']['windspeed'] = df.values.tolist()
+                res.append(station_res)
+    else:
+        print('ComputeIntensityMeasure: currently only supporting LinearAnalytical model')
+
+    # return
+    return res
+
+
 def convert_wind_speed(event_info, simu_res):
 
     print('ComputeIntensityMeasure: converting peak wind speed to specificed exposure, measuring height, and gust duration.')
@@ -381,7 +468,7 @@ def interp_wind_by_height(pws_ip, height_simu, height_ref):
     num_stat = pws_ip.shape[0]
     pws_op = np.zeros(num_stat)
     for i in range(num_stat):
-        pws_op[i] = np.interp(height_ref, height_simu, pws_ip[i, :], left = pws_ip[0], right = pws_ip[-1])
+        pws_op[i] = np.interp(height_ref, height_simu, pws_ip[i, :], left = pws_ip[i, 0], right = pws_ip[i, -1])
 
     # return
     return pws_op

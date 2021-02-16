@@ -29,7 +29,7 @@
         }
     },
     "Event": {
-        "NumberPerSite": 5,
+        "NumberPerSite": 1,
         "Perturbation": [0.0, 0.0, 90.0, 10.0, 10.0, 10.0],
         "IntensityMeasure": {
             "Type": "HAZUS-PWS",
