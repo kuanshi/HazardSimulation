@@ -32,7 +32,7 @@
 
 // Contributors:
 // Ajay B Harish, Post-Doc @ SimCenter, UC Berkeley
-// Kuanshi ZHong, SimCenter, Stanford
+// Kuanshi Zhong, SimCenter, Stanford
 // Dr. Frank McKenna, CTO of SimCenter, UC Berkeley
 // Prof. Sanjay Govindjee, Director of SimCenter, UC Berkeley
 

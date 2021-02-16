@@ -138,17 +138,18 @@ if __name__ == '__main__':
         #print(np.exp(ln_psa_mr[0][1, :, 1]))
     elif scenario_info['Type'] == 'Wind':
         if scenario_info['Generator'] == 'Simulation':
-            if scenario_info['ModelType'] == 'LinearAnalytical':
+            if scenario_info['ModelType'] == 'LinearAnalyticalPy':
                 # simulating storm
-                # storm_simu = simulate_storm(scenarios, event_info, 'LinearAnalytical')
+                storm_simu = simulate_storm(scenarios, event_info, 'LinearAnalytical')
+            elif scenario_info['ModelType'] == 'LinearAnalytical':
                 # simulation storm (c++ binary)
                 storm_simu = simulate_storm_cpp(site_info, scenario_info, event_info, 'LinearAnalytical', dir_info)
-                # converting peak wind speed
-                pws = convert_wind_speed(event_info, storm_simu)
-                # saving results
-                _ = export_pws(stations, pws, output_dir, filename = 'EventGrid.csv')
             else:
                 print('HazardSimulation: currently supporting LinearAnalytical model type.')
+            # converting peak wind speed
+            pws = convert_wind_speed(event_info, storm_simu)
+            # saving results
+            _ = export_pws(stations, pws, output_dir, filename = 'EventGrid.csv')
         else:
             print('HazardSimulation: currently supporting Wind-Simulation')
     else:
