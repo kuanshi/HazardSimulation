@@ -292,8 +292,8 @@ def simulate_storm(scenarios, event_info, model_type):
                 delta_path = (np.random.rand(3) - 0.5) * path_perturb
                 delta_feat = np.array(param[3:6]) + (np.random.rand(3) - 0.5) * feat_perturb
                 # this just an engineering judgement that the pressure difference, moving speed, and max-wind-speed radius
-                # should not be less than 10.0 in the value.
-                delta_feat[delta_feat < 10.0] = 10.0
+                # should not be less than 0.0 in the value.
+                delta_feat[delta_feat < 0.0] = 0.0
                 print('dLatitude, dLongtitude, dAngle = ', delta_path)
                 print('dP, v, Rmax = ', delta_feat)
                 model.set_delta_path(delta_path)
