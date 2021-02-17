@@ -1,0 +1,28 @@
+{
+    "Site": {
+        "Type": "From_CSV",
+        "input_file": "SiteFile.csv",
+        "min_ID": 1,
+        "max_ID": 2
+    },
+    "Scenario": {
+        "Type": "Earthquake",
+        "Number": 1,
+        "Generator": "ShakerMaker",
+        "SimuConfig": {
+            "Source": {
+                "SourceFile": "SourceInfo.csv",
+                "STF": "Brune"
+            },
+            "Path": {
+                "PathType": "UserDefined",
+                "PathFile": "PathInfo.csv"
+            }
+        }
+    },
+    "Directory":{
+        "Work": "./",
+        "Input": "./test/eq_input/",
+        "Output": "./test/records/"
+    }
+}
