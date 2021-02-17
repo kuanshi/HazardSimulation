@@ -102,7 +102,7 @@ License:
 2. chromedriver is subjected to Apache-2.0 License
 
 Extra Python packages:
-[JPype1](https://pypi.org/project/JPype1/), [selenium](https://pypi.org/project/selenium/), [tqdm](https://pypi.org/project/tqdm/2.2.3/)
+[JPype1](https://pypi.org/project/JPype1/), [selenium](https://pypi.org/project/selenium/), [tqdm](https://pypi.org/project/tqdm/2.2.3/), [shapely](https://pypi.org/project/Shapely/) (only needed for using "LinearAnalyticalPy" for wind "ModelType"), [ShakerMaker](https://shakermaker.readthedocs.io/en/latest/) (only needed for using "ShakerMaker" as a scenario "Generator")
 
 
 
