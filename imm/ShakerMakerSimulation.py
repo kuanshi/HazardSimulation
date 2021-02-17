@@ -214,7 +214,7 @@ class ShakerMakerModel:
         for i in range(self.num_site):
             cur_site = self.sitelist[i]
             # get ground velocity responses
-            vel_ns, vel_ew, vel_ud, t = cur_site.get_response()
+            vel_ud, vel_ew, vel_ns, t = cur_site.get_response()
             # get acceleration responses
             kms2g = 1000.0 / 9.81
             acc_ns = np.diff(vel_ns) / np.diff(t) * kms2g
