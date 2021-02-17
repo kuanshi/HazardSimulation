@@ -101,7 +101,7 @@ if __name__ == '__main__':
     scenario_info = hazard_info['Scenario']
     if scenario_info['Type'] == 'Earthquake':
         # Creating earthquake scenarios
-        scenarios = create_earthquake_scenarios(scenario_info, stations)
+        scenarios = create_earthquake_scenarios(scenario_info, stations, input_dir=input_dir, output_dir=output_dir)
     elif scenario_info['Type'] == 'Wind':
         # Creating wind scenarios
         event_info = hazard_info['Event']
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     # Computing intensity measures
     print('HazardSimulation: computing intensity measures.')
-    if scenario_info['Type'] == 'Earthquake':
+    if (scenario_info['Type'] == 'Earthquake') and (scenario_info['Generator'] == 'Selection'):
         # Computing uncorrelated Sa
         event_info = hazard_info['Event']
         psa_raw, stn_new = compute_spectra(scenarios, stations['Stations'],
@@ -136,6 +136,10 @@ if __name__ == '__main__':
             print('HazardSimulation: simulated intensity measures saved.')
         #print(np.exp(ln_psa_mr[0][0, :, 1]))
         #print(np.exp(ln_psa_mr[0][1, :, 1]))
+    elif (scenario_info['Type'] == 'Earthquake') and (scenario_info['Generator'] == 'ShakerMaker'):
+        # TODO: adding intensity measure computing ability
+        print('HazardSimulation: simulation done.')
+        exit()
     elif scenario_info['Type'] == 'Wind':
         if scenario_info['Generator'] == 'Simulation':
             if scenario_info['ModelType'] == 'LinearAnalyticalPy':
@@ -149,7 +153,7 @@ if __name__ == '__main__':
             # converting peak wind speed
             pws = convert_wind_speed(event_info, storm_simu)
             # saving results
-            _ = export_pws(stations, pws, output_dir, filename = 'EventGrid.csv')
+            export_pws(stations, pws, output_dir, filename = 'EventGrid.csv')
         else:
             print('HazardSimulation: currently supporting Wind-Simulation')
     else:

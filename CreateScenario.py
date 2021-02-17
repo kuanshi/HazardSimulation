@@ -45,9 +45,10 @@ import random
 import numpy as np
 import pandas as pd
 from FetchOpenSHA import *
+from imm.ShakerMakerSimulation import *
 
 
-def create_earthquake_scenarios(scenario_info, stations):
+def create_earthquake_scenarios(scenario_info, stations, input_dir=[], output_dir=[], output_format='SimCenterEvent'):
 
     # Number of scenarios
     source_num = scenario_info.get('Number', 1)
@@ -122,6 +123,15 @@ def create_earthquake_scenarios(scenario_info, stations):
                 }})
             except:
                 print('Please check point-source inputs.')
+    # Simulating the earthquake
+    elif scenario_info['Generator'] == 'ShakerMaker':
+        # initialization
+        sm_model = ShakerMakerModel(scenario_info['SimuConfig'], stations['Stations'], input_dir)
+        # configuration
+        sm_model.model_configuration()
+        scenario_data = sm_model
+        sm_model.run_simulation(output_dir, output_format)
+
     # return
     return scenario_data
 
