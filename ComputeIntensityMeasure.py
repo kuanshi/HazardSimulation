@@ -364,7 +364,10 @@ def simulate_storm_cpp(site_info, scenario_info, event_info, model_type, dir_inf
                     json.dump(pert_dict, f)
                 print('dLatitude, dLongtitude, dAngle = ', delta_path)
                 print('dP, dv, dR = ', delta_feat)
-                windsimu_bin = os.path.dirname(__file__) + '/bin/windmodel/WindFieldModel.exe'
+                if sys.platform.startswith('win'):
+                    windsimu_bin = os.path.dirname(__file__) + '/bin/windmodel/WindFieldModel.exe'
+                elif sys.platform.startswith('linux'):
+                    windsimu_bin = os.path.dirname(__file__) + '/bin/windmodel/WindFieldModel'                
                 args = [windsimu_bin, "--config", abs_path_config, "--site", abs_path_site, 
                     "--track", abs_path_track, "--latw", abs_path_latw, "--pert", abs_path_pert,
                     "--terrain", abs_path_terrain, "--z0", os.path.abspath(output_dir), 
