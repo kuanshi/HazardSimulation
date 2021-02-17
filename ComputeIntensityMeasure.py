@@ -373,6 +373,8 @@ def simulate_storm_cpp(site_info, scenario_info, event_info, model_type, dir_inf
                     "--terrain", abs_path_terrain, "--z0", os.path.abspath(output_dir), 
                     "--output", os.path.abspath(output_dir)]
                 subprocess.run(args)
+                os.remove(abs_path_pert)
+                os.remove(abs_path_config)
                 station_res = {
                     'Latitude': [],
                     'Longitude': [],
