@@ -293,8 +293,8 @@ int WindFieldModel::ComputeStationZ0(std::string dirOutput)
     // Calculating the surface roughness z0 for staitons
     // Mapping individual stations to the reference z0r values of polygons
     Eigen::ArrayXd z0_station = Eigen::ArrayXd::Zero(this->Lat_wout.size());
-    Eigen::ArrayXd PolyX = this->Lat_wr.block(0, this->Wr_sizes.size() - 1, this->Wr_sizes(Wr_sizes.size() - 1), 1);
-    Eigen::ArrayXd PolyY = this->Long_wr.block(0, this->Wr_sizes.size() - 1, this->Wr_sizes(Wr_sizes.size() - 1), 1);
+    Eigen::ArrayXd PolyX = this->Lat_wr.block(0, this->Wr_sizes.size() - 1, this->Wr_sizes(this->Wr_sizes.size() - 1), 1);
+    Eigen::ArrayXd PolyY = this->Long_wr.block(0, this->Wr_sizes.size() - 1, this->Wr_sizes(this->Wr_sizes.size() - 1), 1);
     for (int ii = 0; ii < this->Lat_wout.size(); ii++)
     {
         double stationX = this->Lat_wout(ii);
