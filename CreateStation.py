@@ -64,15 +64,15 @@ class Station:
         self.vs30 = vs30
         self.z2p5 = z2p5
 
-    def get_location():
+    def get_location(self):
         # Returning the geo location
         return self.lon, self.lat
 
-    def get_vs30():
+    def get_vs30(self):
         # Returning the Vs30 at the station
         return self.vs30
 
-    def get_z2p5():
+    def get_z2p5(self):
         # Returning the z2.5 of the station
         return self.z2p5
 
