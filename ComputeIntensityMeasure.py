@@ -44,6 +44,7 @@ import sys
 import json
 import copy
 import shutil
+from unicodedata import numeric
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
@@ -74,13 +75,36 @@ def compute_spectra(scenarios, stations, gmpe_info, im_info):
     station_info = {'Type': 'SiteList',
                     'SiteList': station_list}
     # Configuring site properties
-    siteSpec, sites, site_prop = get_site_prop(gmpe_info['Type'], station_list)
+    siteSpec = []
+    sites = []
+    site_prop = []
+    if gmpe_info['Type'] == 'NGAWest2 2014 Averaged':
+        gmpe_list = ["Abrahamson, Silva & Kamai (2014)", "Boore, Stewart, Seyhan & Atkinson (2014)", 
+                     "Campbell & Bozorgnia (2014)", "Chiou & Youngs (2014)"]
+        gmpe_weights = [0.25, 0.25, 0.25, 0.25]
+    else:
+        gmpe_list = [gmpe_info['Type']]
+    for cur_gmpe in gmpe_list:
+        x, y, z = get_site_prop(cur_gmpe, station_list)
+        siteSpec.append(x)
+        sites.append(y)
+        site_prop.append(z)
     # Loop over scenarios
     for i, s in enumerate(tqdm(scenarios, desc='Scenarios')):
         # Rupture
         source_info = scenarios[i]
         # Computing IM
-        res, station_info = get_IM(gmpe_info, erf, sites, siteSpec, site_prop, source_info, station_info, im_info)
+        res_list = []
+        curgmpe_info = {}
+        for j, cur_gmpe in enumerate(gmpe_list):
+            curgmpe_info['Type'] = cur_gmpe
+            curgmpe_info['Parameters'] = gmpe_info['Parameters']
+            x, station_info = get_IM(curgmpe_info, erf, sites[j], siteSpec[j], site_prop[j], source_info, station_info, im_info)
+            res_list.append(x)
+        if gmpe_info['Type'] == 'NGAWest2 2014 Averaged':
+            res = compute_weighted_res(res_list, gmpe_weights)
+        else:
+            res = res_list[0]
         # Collecting outputs
         psa_raw.append(res)
 
@@ -583,4 +607,63 @@ def export_pws(stations, pws, output_dir, filename = 'EventGrid.csv'):
 
     print('ComputeIntensityMeasure: simulated wind speed field saved.')
         
+
+def compute_weighted_res(res_list, gmpe_weights):
+
+    # compute weighted average of gmpe results
+    # initialize the return res (these three attributes are identical in different gmpe results)
+    res = {'Magnitude': res_list[0]['Magnitude'],
+           'MeanAnnualRate': res_list[0]['MeanAnnualRate'],
+           'Periods': res_list[0]['Periods']}
+    # number of gmpe
+    num_gmpe = len(res_list)
+    # check number of weights
+    if not (num_gmpe == len(gmpe_weights)):
+        print('ComputeIntensityMeasure: please check the weights of different GMPEs.')
+        return 1
+    # site number
+    num_site = len(res_list[0]['GroundMotions'])
+    # loop over different sites
+    gm_collector = []
+    for site_tag in range(num_site):
+        # loop over different GMPE
+        tmp_res = {}
+        for i, cur_res in enumerate(res_list):
+            cur_gmResults = cur_res['GroundMotions'][site_tag]
+            # get keys
+            im_keys = list(cur_gmResults.keys())
+            for cur_im in im_keys:
+                if not (cur_im in list(tmp_res.keys())):
+                    if cur_im in ['Location','SiteData']:
+                        tmp_res.update({cur_im: cur_gmResults[cur_im]})
+                    else:
+                        tmp_res.update({cur_im: {}})
+                if not (cur_im in ['Location','SiteData']):
+                    # get components
+                    comp_keys = list(cur_gmResults[cur_im].keys())
+                    # loop over differen components
+                    for cur_comp in comp_keys:
+                        if not (cur_comp in list(tmp_res[cur_im].keys())):
+                            tmp_res[cur_im].update({cur_comp: []})
+                            for cur_value in cur_gmResults[cur_im][cur_comp]:
+                                if 'StdDev' in cur_comp:
+                                    # standard deviation
+                                    tmp_res[cur_im][cur_comp].append(np.sqrt(cur_value ** 2.0 * gmpe_weights[i]))
+                                else:
+                                    # mean
+                                    tmp_res[cur_im][cur_comp].append(cur_value * gmpe_weights[i])
+                        else:
+                            for j, cur_value in enumerate(cur_gmResults[cur_im][cur_comp]):
+                                if 'StdDev' in cur_comp:
+                                    # standard deviation
+                                    tmp_res[cur_im][cur_comp][j] = np.sqrt(tmp_res[cur_im][cur_comp][j] ** 2.0 + cur_value ** 2.0 * gmpe_weights[i])
+                                else:
+                                    # mean
+                                    tmp_res[cur_im][cur_comp][j] = tmp_res[cur_im][cur_comp][j] + cur_value * gmpe_weights[i]
+        # collector
+        gm_collector.append(tmp_res)
+    # res
+    res.update({'GroundMotions': gm_collector})
+    # return
+    return res
 
